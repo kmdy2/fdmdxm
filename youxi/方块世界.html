@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>方块世界 · Voxel Craft</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#87CEEB;font-family:Arial,sans-serif;user-select:none}
+#game{position:fixed;inset:0}
+canvas{display:block}
+#crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:20px;height:20px;pointer-events:none;z-index:10}
+#crosshair::before,#crosshair::after{content:"";position:absolute;background:rgba(255,255,255,.8);box-shadow:0 0 2px #000}
+#crosshair::before{left:50%;top:0;width:2px;height:100%;transform:translateX(-50%)}
+#crosshair::after{top:50%;left:0;height:2px;width:100%;transform:translateY(-50%)}
+#hotbar{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:20;background:rgba(0,0,0,.35);padding:5px;border-radius:6px}
+.slot{width:44px;height:44px;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.slot.active{border-color:#fff;background:rgba(255,255,255,.35)}
+.slot .swatch{width:26px;height:26px;border-radius:3px;border:1px solid rgba(0,0,0,.3)}
+.slot .num{position:absolute;top:1px;left:3px;font-size:10px;color:rgba(255,255,255,.8)}
+#joystick{position:fixed;left:20px;bottom:80px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);z-index:30;display:none;touch-action:none}
+#joystick-knob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:rgba(255,255,255,.4);border:2px solid rgba(255,255,255,.6)}
+.mobile-btn{position:fixed;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.5);color:#fff;font-size:22px;display:none;align-items:center;justify-content:center;z-index:30;touch-action:none;cursor:pointer}
+.mobile-btn:active{background:rgba(255,255,255,.5)}
+#jumpBtn{right:24px;bottom:140px}
+#breakBtn{right:92px;bottom:70px;font-size:18px}
+#placeBtn{right:24px;bottom:70px;font-size:18px}
+#startScreen{position:fixed;inset:0;background:linear-gradient(180deg,#1a1a2e,#16213e);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;color:#fff;text-align:center;padding:20px}
+#startScreen h1{font-size:clamp(32px,7vw,56px);margin-bottom:8px;text-shadow:0 0 20px rgba(100,200,255,.5)}
+#startScreen p{opacity:.7;margin-bottom:24px;line-height:1.7;font-size:14px}
+#startBtn{padding:14px 40px;font-size:18px;background:#4CAF50;color:#fff;border:none;border-radius:8px;cursor:pointer;box-shadow:0 4px 15px rgba(76,175,80,.4)}
+#startBtn:active{transform:scale(.96)}
+.controls-info{margin-top:20px;font-size:12px;opacity:.5;line-height:1.8}
+#hint{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;padding:6px 16px;border-radius:20px;font-size:13px;z-index:15;display:none}
+</style>
+</head>
+<body>
+
+<div id="game"></div>
+<div id="crosshair"></div>
+<div id="hint"></div>
+<div id="hotbar"></div>
+<div id="joystick"><div id="joystick-knob"></div></div>
+<div class="mobile-btn" id="jumpBtn">↑</div>
+<div class="mobile-btn" id="breakBtn">挖</div>
+<div class="mobile-btn" id="placeBtn">放</div>
+
+<div id="startScreen">
+  <h1>方块世界</h1>
+  <p>探索 · 挖掘 · 建造<br>一个属于你的体素沙盒</p>
+  <button id="startBtn">开始游戏</button>
+  <div class="controls-info">
+    电脑：WASD 移动 · 空格跳跃 · 鼠标左键挖 · 右键放 · 1-6 切换方块<br>
+    手机：左摇杆移动 · 右滑屏转视角 · 右下按钮跳跃/挖/放
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+// ============ 音效系统（Web Audio API 程序化生成，无需外部文件） ============
+let audioCtx = null;
+function initAudio(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+}
+// 跳跃：短促上升音
+function playJumpSound(){
+  if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(280, t);
+  osc.frequency.exponentialRampToValueAtTime(620, t + 0.12);
+  gain.gain.setValueAtTime(0.22, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.15);
+}
+// 挖掘：低频噪声 + 闷响
+function playBreakSound(){
+  if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+  // 噪声层
+  const bufSize = audioCtx.sampleRate * 0.14;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for(let i = 0; i < bufSize; i++) data[i] = (Math.random()*2-1) * Math.pow(1 - i/bufSize, 2.2);
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf;
+  const nGain = audioCtx.createGain();
+  nGain.gain.value = 0.28;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 750;
+  noise.connect(filter).connect(nGain).connect(audioCtx.destination);
+  noise.start(t);
+  // 低频"咚"
+  const osc = audioCtx.createOscillator();
+  const oGain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(170, t);
+  osc.frequency.exponentialRampToValueAtTime(75, t + 0.1);
+  oGain.gain.setValueAtTime(0.22, t);
+  oGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  osc.connect(oGain).connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.12);
+}
+// 放置：短促中频"嗒"
+function playPlaceSound(){
+  if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(520, t);
+  osc.frequency.exponentialRampToValueAtTime(340, t + 0.08);
+  gain.gain.setValueAtTime(0.2, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.1);
+}
+
+// ============ 基础设置 ============
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(0x87CEEB, 20, 55);
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 200);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.getElementById('game').appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+sun.position.set(30, 50, 20);
+scene.add(sun);
+
+// ============ 纹理生成 ============
+function makeTex(draw){
+  const c = document.createElement('canvas');
+  c.width = c.height = 16;
+  const ctx = c.getContext('2d');
+  draw(ctx);
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = t.minFilter = THREE.NearestFilter;
+  return t;
+}
+function noiseFill(ctx, base, variants, count){
+  ctx.fillStyle = base; ctx.fillRect(0,0,16,16);
+  for(let i=0;i<count;i++){
+    ctx.fillStyle = variants[Math.floor(Math.random()*variants.length)];
+    ctx.fillRect(Math.floor(Math.random()*16), Math.floor(Math.random()*16), 1, 1);
+  }
+}
+const texGrassTop = makeTex(ctx => noiseFill(ctx, '#5a9c3a', ['#4a8a2e','#6ab04a','#3d7a26'], 40));
+const texDirt = makeTex(ctx => noiseFill(ctx, '#8b5a2b', ['#7a4e24','#9c6830','#6b4420'], 40));
+const texGrassSide = makeTex(ctx => {
+  noiseFill(ctx, '#8b5a2b', ['#7a4e24','#9c6830'], 30);
+  ctx.fillStyle = '#5a9c3a'; ctx.fillRect(0,0,16,4);
+  for(let i=0;i<15;i++){ctx.fillStyle=Math.random()<.5?'#4a8a2e':'#6ab04a';ctx.fillRect(Math.floor(Math.random()*16),Math.floor(Math.random()*4),1,1);}
+  for(let x=0;x<16;x++) if(Math.random()<.4){ctx.fillStyle='#5a9c3a';ctx.fillRect(x,4,1,1+Math.floor(Math.random()*2));}
+});
+const texStone = makeTex(ctx => noiseFill(ctx, '#8a8a8a', ['#7a7a7a','#9a9a9a','#6a6a6a'], 45));
+const texWood = makeTex(ctx => {
+  ctx.fillStyle='#6b4423';ctx.fillRect(0,0,16,16);
+  for(let x=0;x<16;x+=3){ctx.fillStyle=Math.random()<.5?'#5a3a1d':'#7a5030';ctx.fillRect(x,0,1,16);}
+  for(let i=0;i<20;i++){ctx.fillStyle='#5a3a1d';ctx.fillRect(Math.floor(Math.random()*16),Math.floor(Math.random()*16),1,1);}
+});
+const texLeaves = makeTex(ctx => noiseFill(ctx, '#2d6a2d', ['#1f5a1f','#3d7a3d','#256025'], 50));
+const texSand = makeTex(ctx => noiseFill(ctx, '#e8d898', ['#d8c888','#f0e0a8','#d0c078'], 40));
+const matGrassSide = new THREE.MeshLambertMaterial({map:texGrassSide});
+const matGrassTop = new THREE.MeshLambertMaterial({map:texGrassTop});
+const matDirt = new THREE.MeshLambertMaterial({map:texDirt});
+const matStone = new THREE.MeshLambertMaterial({map:texStone});
+const matWood = new THREE.MeshLambertMaterial({map:texWood});
+const matLeaves = new THREE.MeshLambertMaterial({map:texLeaves});
+const matSand = new THREE.MeshLambertMaterial({map:texSand});
+const grassMats = [matGrassSide,matGrassSide,matGrassTop,matDirt,matGrassSide,matGrassSide];
+
+// ============ 世界数据 ============
+const W = 36, D = 36, H = 32;
+const world = new Uint8Array(W*H*D);
+const idx = (x,y,z) => (y*D+z)*W+x;
+function getBlock(x,y,z){
+  if(x<0||x>=W||y<0||y>=H||z<0||z>=D) return 0;
+  return world[idx(x,y,z)];
+}
+function setBlock(x,y,z,v){
+  if(x<0||x>=W||y<0||y>=H||z<0||z>=D) return;
+  world[idx(x,y,z)] = v;
+}
+function noise2(x,z){
+  return Math.sin(x*0.25)*Math.cos(z*0.25)*2.5 + Math.sin(x*0.1+z*0.12)*3 + Math.cos(x*0.08-z*0.06)*1.5;
+}
+function genWorld(){
+  for(let x=0;x<W;x++){
+    for(let z=0;z<D;z++){
+      const h = Math.floor(10 + noise2(x,z));
+      for(let y=0;y<=h;y++){
+        if(y===h) setBlock(x,y,z,1);
+        else if(y>h-3) setBlock(x,y,z,2);
+        else setBlock(x,y,z,3);
+      }
+      if(Math.random()<0.018 && h>7 && x>2 && x<W-3 && z>2 && z<D-3){
+        const th = 4+Math.floor(Math.random()*2);
+        for(let i=1;i<=th;i++) setBlock(x,h+i,z,4);
+        for(let dx=-2;dx<=2;dx++) for(let dz=-2;dz<=2;dz++) for(let dy=th-1;dy<=th+1;dy++){
+          if(Math.abs(dx)+Math.abs(dz)+Math.abs(dy-th)<=3 && getBlock(x+dx,h+dy,z+dz)===0)
+            setBlock(x+dx,h+dy,z+dz,5);
+        }
+      }
+      if(x<2||x>W-3||z<2||z>D-3){
+        for(let y=0;y<=h;y++) setBlock(x,y,z, y===h?6:3);
+      }
+    }
+  }
+}
+genWorld();
+
+// ============ 方块渲染 ============
+const blockGeo = new THREE.BoxGeometry(1,1,1);
+const blockDefs = {
+  1:{name:'草方块',mat:grassMats,color:'#5a9c3a'},
+  2:{name:'泥土',mat:matDirt,color:'#8b5a2b'},
+  3:{name:'石头',mat:matStone,color:'#8a8a8a'},
+  4:{name:'木头',mat:matWood,color:'#6b4423'},
+  5:{name:'树叶',mat:matLeaves,color:'#2d6a2d'},
+  6:{name:'沙子',mat:matSand,color:'#e8d898'},
+};
+const meshes = {};
+const MAX_INST = W*D*H;
+for(const id in blockDefs){
+  const m = new THREE.InstancedMesh(blockGeo, blockDefs[id].mat, MAX_INST);
+  m.count = 0;
+  scene.add(m);
+  meshes[id] = m;
+}
+const _m4 = new THREE.Matrix4();
+function rebuildMeshes(){
+  const pos = {};
+  for(const id in blockDefs) pos[id] = [];
+  for(let x=0;x<W;x++) for(let y=0;y<H;y++) for(let z=0;z<D;z++){
+    const v = getBlock(x,y,z);
+    if(!v) continue;
+    if(getBlock(x+1,y,z)&&getBlock(x-1,y,z)&&getBlock(x,y+1,z)&&getBlock(x,y-1,z)&&getBlock(x,y,z+1)&&getBlock(x,y,z-1)) continue;
+    pos[v].push(x,y,z);
+  }
+  for(const id in blockDefs){
+    const mesh = meshes[id];
+    const p = pos[id];
+    mesh.count = p.length/3;
+    for(let i=0;i<p.length;i+=3){
+      _m4.makeTranslation(p[i]+0.5, p[i+1]+0.5, p[i+2]+0.5);
+      mesh.setMatrixAt(i/3, _m4);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+rebuildMeshes();
+
+const hl = new THREE.Mesh(
+  new THREE.BoxGeometry(1.004,1.004,1.004),
+  new THREE.MeshBasicMaterial({color:0x000000,wireframe:true,transparent:true,opacity:0.4})
+);
+hl.visible = false;
+scene.add(hl);
+
+// ============ 玩家 ============
+const player = {
+  pos: new THREE.Vector3(W/2, 22, D/2),
+  vel: new THREE.Vector3(),
+  onGround: false,
+  yaw: 0, pitch: 0,
+};
+const PLAYER_HW = 0.3, PLAYER_HH = 0.9;
+function collides(){
+  const minX=Math.floor(player.pos.x-PLAYER_HW), maxX=Math.floor(player.pos.x+PLAYER_HW);
+  const minY=Math.floor(player.pos.y-PLAYER_HH), maxY=Math.floor(player.pos.y+PLAYER_HH);
+  const minZ=Math.floor(player.pos.z-PLAYER_HW), maxZ=Math.floor(player.pos.z+PLAYER_HW);
+  for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) for(let z=minZ;z<=maxZ;z++)
+    if(getBlock(x,y,z)) return true;
+  return false;
+}
+function moveAxis(axis, amt){
+  player.pos[axis] += amt;
+  if(collides()){
+    player.pos[axis] -= amt;
+    if(axis==='y'){ if(amt<0) player.onGround=true; player.vel.y=0; }
+    else player.vel[axis]=0;
+  } else if(axis==='y' && amt<0){
+    player.onGround=false;
+  }
+}
+
+// ============ 输入 ============
+const keys = {};
+let currentSlot = 0;
+const hotbarIds = [1,2,3,4,5,6];
+const hotbarEl = document.getElementById('hotbar');
+hotbarIds.forEach((id,i)=>{
+  const s = document.createElement('div');
+  s.className = 'slot' + (i===0?' active':'');
+  s.innerHTML = `<span class="num">${i+1}</span><div class="swatch" style="background:${blockDefs[id].color}"></div>`;
+  s.onclick = ()=> selectSlot(i);
+  hotbarEl.appendChild(s);
+});
+function selectSlot(i){
+  currentSlot = i;
+  document.querySelectorAll('.slot').forEach((s,j)=>s.classList.toggle('active',j===i));
+}
+document.addEventListener('keydown', e=>{
+  keys[e.code]=true;
+  if(e.code>='Digit1'&&e.code<='Digit6') selectSlot(parseInt(e.code.slice(5))-1);
+});
+document.addEventListener('keyup', e=> keys[e.code]=false);
+
+const canvas = renderer.domElement;
+canvas.addEventListener('click', ()=>{ if(gameStarted && !isMobile) canvas.requestPointerLock(); });
+document.addEventListener('mousemove', e=>{
+  if(document.pointerLockElement===canvas){
+    player.yaw -= e.movementX*0.0022;
+    player.pitch -= e.movementY*0.0022;
+    player.pitch = Math.max(-Math.PI/2+0.02, Math.min(Math.PI/2-0.02, player.pitch));
+  }
+});
+canvas.addEventListener('contextmenu', e=>e.preventDefault());
+document.addEventListener('mousedown', e=>{
+  if(document.pointerLockElement!==canvas) return;
+  if(e.button===0) breakBlock();
+  if(e.button===2) placeBlock();
+});
+
+// ============ 手机控制 ============
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 'ontouchstart' in window;
+if(isMobile){
+  document.getElementById('joystick').style.display='block';
+  document.querySelectorAll('.mobile-btn').forEach(b=>b.style.display='flex');
+}
+const joyEl = document.getElementById('joystick');
+const joyKnob = document.getElementById('joystick-knob');
+let joy = {active:false,id:null,dx:0,dy:0,cx:0,cy:0};
+joyEl.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  const t=e.changedTouches[0];
+  joy.active=true; joy.id=t.identifier;
+  const r=joyEl.getBoundingClientRect();
+  joy.cx=r.left+r.width/2; joy.cy=r.top+r.height/2;
+},{passive:false});
+document.addEventListener('touchmove', e=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===joy.id){
+      let dx=t.clientX-joy.cx, dy=t.clientY-joy.cy;
+      const d=Math.sqrt(dx*dx+dy*dy), max=45;
+      if(d>max){dx=dx/d*max;dy=dy/d*max;}
+      joy.dx=dx/max; joy.dy=dy/max;
+      joyKnob.style.transform=`translate(${dx}px,${dy}px)`;
+    }
+  }
+},{passive:false});
+document.addEventListener('touchend', e=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===joy.id){
+      joy.active=false; joy.dx=joy.dy=0;
+      joyKnob.style.transform='translate(0,0)';
+    }
+  }
+});
+let look={active:false,id:null,lx:0,ly:0};
+document.addEventListener('touchstart', e=>{
+  for(const t of e.changedTouches){
+    if(t.target.closest('.mobile-btn')||t.target.closest('#joystick')||t.target.closest('#hotbar')||t.target.closest('#startScreen')) continue;
+    if(t.clientX > innerWidth*0.35){
+      look.active=true; look.id=t.identifier; look.lx=t.clientX; look.ly=t.clientY;
+    }
+  }
+});
+document.addEventListener('touchmove', e=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===look.id){
+      const dx=t.clientX-look.lx, dy=t.clientY-look.ly;
+      player.yaw -= dx*0.005;
+      player.pitch -= dy*0.005;
+      player.pitch = Math.max(-Math.PI/2+0.02, Math.min(Math.PI/2-0.02, player.pitch));
+      look.lx=t.clientX; look.ly=t.clientY;
+    }
+  }
+},{passive:false});
+document.addEventListener('touchend', e=>{
+  for(const t of e.changedTouches) if(t.identifier===look.id) look.active=false;
+});
+document.getElementById('jumpBtn').addEventListener('touchstart', e=>{
+  e.preventDefault();
+  if(player.onGround){ player.vel.y=8.2; player.onGround=false; playJumpSound(); }
+},{passive:false});
+document.getElementById('breakBtn').addEventListener('touchstart', e=>{e.preventDefault(); breakBlock();},{passive:false});
+document.getElementById('placeBtn').addEventListener('touchstart', e=>{e.preventDefault(); placeBlock();},{passive:false});
+
+// ============ 射线：挖/放 ============
+const raycaster = new THREE.Raycaster();
+raycaster.params.InstancedMesh = {threshold:0};
+raycaster.far = 6;
+function getTarget(){
+  raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+  const hits = raycaster.intersectObjects(Object.values(meshes), false);
+  if(hits.length>0){
+    const hit=hits[0];
+    const mat=new THREE.Matrix4();
+    hit.object.getMatrixAt(hit.instanceId, mat);
+    const p=new THREE.Vector3().setFromMatrixPosition(mat);
+    return {
+      bx:Math.floor(p.x), by:Math.floor(p.y), bz:Math.floor(p.z),
+      normal: hit.face.normal.clone()
+    };
+  }
+  return null;
+}
+function breakBlock(){
+  const t=getTarget();
+  if(!t) return;
+  setBlock(t.bx,t.by,t.bz,0);
+  rebuildMeshes();
+  playBreakSound();
+  showHint('已破坏方块');
+}
+function placeBlock(){
+  const t=getTarget();
+  if(!t) return;
+  const px=t.bx+Math.round(t.normal.x);
+  const py=t.by+Math.round(t.normal.y);
+  const pz=t.bz+Math.round(t.normal.z);
+  if(getBlock(px,py,pz)) return;
+  const minX=Math.floor(player.pos.x-PLAYER_HW), maxX=Math.floor(player.pos.x+PLAYER_HW);
+  const minY=Math.floor(player.pos.y-PLAYER_HH), maxY=Math.floor(player.pos.y+PLAYER_HH);
+  const minZ=Math.floor(player.pos.z-PLAYER_HW), maxZ=Math.floor(player.pos.z+PLAYER_HW);
+  if(px>=minX&&px<=maxX&&py>=minY&&py<=maxY&&pz>=minZ&&pz<=maxZ) return;
+  setBlock(px,py,pz,hotbarIds[currentSlot]);
+  rebuildMeshes();
+  playPlaceSound();
+  showHint('已放置 '+blockDefs[hotbarIds[currentSlot]].name);
+}
+let hintTimer;
+function showHint(msg){
+  const h=document.getElementById('hint');
+  h.textContent=msg; h.style.display='block';
+  clearTimeout(hintTimer);
+  hintTimer=setTimeout(()=>h.style.display='none',1200);
+}
+
+// ============ 游戏循环 ============
+let gameStarted=false;
+let lastTime=performance.now();
+function update(dt){
+  const fwd=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw));
+  const right=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw));
+  const move=new THREE.Vector3();
+  if(keys['KeyW']||keys['ArrowUp']) move.add(fwd);
+  if(keys['KeyS']||keys['ArrowDown']) move.sub(fwd);
+  if(keys['KeyD']||keys['ArrowRight']) move.add(right);
+  if(keys['KeyA']||keys['ArrowLeft']) move.sub(right);
+  if(joy.active){ move.addScaledVector(fwd,-joy.dy); move.addScaledVector(right,joy.dx); }
+  const speed = (keys['ShiftLeft']||keys['ShiftRight'])?7.5:5;
+  if(move.length()>0) move.normalize().multiplyScalar(speed);
+  player.vel.x=move.x; player.vel.z=move.z;
+  player.vel.y -= 22*dt;
+  if((keys['Space'])&&player.onGround){ player.vel.y=8.2; player.onGround=false; playJumpSound(); }
+  moveAxis('x', player.vel.x*dt);
+  moveAxis('y', player.vel.y*dt);
+  moveAxis('z', player.vel.z*dt);
+  player.pos.x=Math.max(0.5,Math.min(W-0.5,player.pos.x));
+  player.pos.z=Math.max(0.5,Math.min(D-0.5,player.pos.z));
+  if(player.pos.y<-5){ player.pos.set(W/2,22,D/2); player.vel.set(0,0,0); }
+  camera.position.set(player.pos.x, player.pos.y+1.62, player.pos.z);
+  camera.rotation.order='YXZ';
+  camera.rotation.y=player.yaw;
+  camera.rotation.x=player.pitch;
+  const t=getTarget();
+  if(t){ hl.visible=true; hl.position.set(t.bx+0.5,t.by+0.5,t.bz+0.5); }
+  else hl.visible=false;
+}
+function loop(){
+  requestAnimationFrame(loop);
+  const now=performance.now();
+  let dt=(now-lastTime)/1000;
+  lastTime=now;
+  if(dt>0.1) dt=0.1;
+  if(gameStarted) update(dt);
+  renderer.render(scene,camera);
+}
+loop();
+addEventListener('resize', ()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  document.getElementById('startScreen').style.display='none';
+  gameStarted=true;
+  initAudio();
+  if(!isMobile) canvas.requestPointerLock();
+});
+</script>
+</body>
+</html>
