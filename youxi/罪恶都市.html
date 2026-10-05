@@ -1,0 +1,2223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>罪恶都市 - Vice City Nights</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei","PingFang SC",sans-serif;}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0a12;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
+
+/* ===== 全屏横屏布局 ===== */
+#game{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;}
+/* 触屏设备：顺时针旋转90度撑满屏幕 */
+@media (pointer:coarse){
+  #game{
+    position:fixed;top:0;left:0;
+    width:100vh;height:100vw;
+    transform:rotate(90deg);
+    transform-origin:top left;
+    inset:auto;
+  }
+}
+#canvasWrap{position:relative;overflow:hidden;background:#111;box-shadow:0 0 40px rgba(255,0,102,0.1);}
+#gameCanvas{display:block;background:#111;}
+canvas{display:block;}
+
+/* ===== 移动端虚拟按键（叠加在画面内，仅触屏显示） ===== */
+#mobileControls{position:absolute;inset:0;pointer-events:none;z-index:80;display:none;}
+@media (pointer:coarse){#mobileControls{display:block;}}
+
+/* 虚拟摇杆（左下） */
+.joystick{
+  position:absolute;left:5%;bottom:8%;
+  width:clamp(90px,18vw,130px);height:clamp(90px,18vw,130px);
+  background:rgba(255,255,255,0.1);
+  border:2px solid rgba(255,255,255,0.25);
+  border-radius:50%;
+  box-shadow:inset 0 2px 8px rgba(0,0,0,0.4);
+  touch-action:none;pointer-events:auto;
+  backdrop-filter:blur(2px);
+}
+.joystick-base-ring{
+  position:absolute;inset:10%;border-radius:50%;
+  border:1px dashed rgba(255,255,255,0.15);
+  pointer-events:none;
+}
+.joystick-knob{
+  position:absolute;left:50%;top:50%;
+  width:45%;height:45%;
+  background:radial-gradient(circle at 35% 30%,rgba(255,120,180,0.9),rgba(255,0,102,0.7));
+  border-radius:50%;transform:translate(-50%,-50%);
+  box-shadow:0 0 14px rgba(255,0,102,0.5),inset 0 2px 3px rgba(255,255,255,0.3);
+  border:2px solid rgba(255,255,255,0.4);
+  pointer-events:none;
+}
+
+/* 右侧功能按钮（右下，2x2） */
+.actionBtns{
+  position:absolute;right:5%;bottom:8%;
+  display:grid;grid-template-columns:1fr 1fr;gap:clamp(8px,1.5vw,12px);
+  pointer-events:none;
+}
+.abtn{
+  width:clamp(48px,10vw,64px);height:clamp(48px,10vw,64px);
+  border-radius:50%;border:none;cursor:pointer;touch-action:none;
+  font-size:clamp(9px,1.6vw,12px);font-weight:bold;color:#fff;
+  box-shadow:0 4px 0 rgba(0,0,0,0.4),inset 0 2px 3px rgba(255,255,255,0.3),0 0 10px rgba(0,0,0,0.3);
+  font-family:"Courier New",monospace;letter-spacing:1px;
+  pointer-events:auto;
+}
+.abtn:active{box-shadow:0 1px 0 rgba(0,0,0,0.4),inset 0 2px 6px rgba(0,0,0,0.5);transform:translateY(3px);}
+.abtn-shoot{background:radial-gradient(circle at 35% 30%,#ff6677,#cc0033);}
+.abtn-enter{background:radial-gradient(circle at 35% 30%,#66dd88,#009944);}
+.abtn-weapon{background:radial-gradient(circle at 35% 30%,#6699ff,#0033aa);}
+.abtn-brake{background:radial-gradient(circle at 35% 30%,#ffcc55,#cc8800);}
+
+/* 标题界面 - 80年代霓虹风格 */
+#titleScreen{position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,#1a0033 0%,#330066 30%,#ff0066 70%,#ff6600 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;overflow:hidden;}
+#titleScreen::before{content:'';position:absolute;bottom:0;left:0;width:100%;height:40%;background:linear-gradient(180deg,transparent,rgba(0,0,50,0.8));}
+#titleScreen h1{font-size:clamp(32px,8vw,72px);color:#fff;text-shadow:0 0 10px #ff00ff,0 0 20px #ff00ff,0 0 40px #ff00ff,4px 4px 0 #00ffff;letter-spacing:8px;margin-bottom:4px;font-weight:900;position:relative;z-index:2;animation:neonPulse 2s infinite;}
+@keyframes neonPulse{0%,100%{text-shadow:0 0 10px #ff00ff,0 0 20px #ff00ff,0 0 40px #ff00ff,4px 4px 0 #00ffff;}50%{text-shadow:0 0 20px #ff00ff,0 0 40px #ff00ff,0 0 60px #ff00ff,4px 4px 0 #00ffff;}}
+#titleScreen .sub{font-size:clamp(14px,3vw,22px);color:#00ffff;text-shadow:0 0 10px #00ffff,0 0 20px #00ffff;margin-bottom:8px;letter-spacing:10px;position:relative;z-index:2;}
+#titleScreen .tagline{font-size:clamp(10px,1.8vw,14px);color:#ffcc00;margin-bottom:30px;letter-spacing:3px;position:relative;z-index:2;text-shadow:0 0 8px #ff6600;}
+.title-btn{width:260px;padding:15px;margin:6px;background:linear-gradient(180deg,rgba(255,0,102,0.8),rgba(102,0,102,0.9));border:2px solid #00ffff;border-radius:4px;color:#fff;font-size:17px;font-weight:bold;cursor:pointer;text-shadow:0 0 8px #00ffff,1px 1px 2px #000;letter-spacing:3px;transition:all 0.15s;position:relative;z-index:2;box-shadow:0 0 15px rgba(0,255,255,0.3);}
+.title-btn:hover{background:linear-gradient(180deg,rgba(255,0,102,1),rgba(153,0,102,1));box-shadow:0 0 25px rgba(0,255,255,0.6),0 0 15px rgba(255,0,255,0.4);transform:scale(1.03);}
+.title-btn:active{transform:scale(0.97);}
+.title-btn.alt{border-color:#ff00ff;text-shadow:0 0 8px #ff00ff;box-shadow:0 0 15px rgba(255,0,255,0.3);}
+
+/* HUD - 80年代风格 */
+#hud{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;display:none;}
+#statusPanel{position:absolute;top:clamp(8px,1.2vh,15px);left:clamp(8px,1.2vw,15px);}
+.stat-bar{width:clamp(110px,16vw,180px);height:clamp(14px,2vh,22px);background:rgba(0,0,30,0.8);border:2px solid #00ffff;border-radius:3px;margin-bottom:5px;overflow:hidden;position:relative;box-shadow:0 0 8px rgba(0,255,255,0.3);}
+.stat-fill{height:100%;transition:width 0.2s;}
+.stat-label{position:absolute;top:1px;left:8px;color:#fff;font-size:clamp(9px,1.4vw,12px);font-weight:bold;text-shadow:0 0 4px #000,1px 1px 2px #000;z-index:2;}
+#healthFill{background:linear-gradient(180deg,#ff0066,#cc0044);box-shadow:0 0 10px rgba(255,0,102,0.5);}
+#armorFill{background:linear-gradient(180deg,#00ffff,#0099cc);box-shadow:0 0 10px rgba(0,255,255,0.5);}
+
+#wantedPanel{position:absolute;top:clamp(8px,1.2vh,15px);right:clamp(110px,16vw,185px);text-align:right;}
+#wantedStars{font-size:clamp(16px,2.6vw,26px);letter-spacing:2px;text-shadow:0 0 10px #ffcc00,2px 2px 4px #000;}
+.star-on{color:#ffcc00;}
+.star-off{color:#333;}
+
+#missionPanel{position:absolute;top:clamp(34px,5vh,55px);right:clamp(8px,1.2vw,15px);width:clamp(140px,20vw,200px);background:rgba(0,0,30,0.8);border:1px solid #ff00ff;border-radius:4px;padding:8px;box-shadow:0 0 10px rgba(255,0,255,0.3);}
+#missionTitle{color:#ff00ff;font-size:clamp(10px,1.5vw,13px);font-weight:bold;margin-bottom:4px;text-shadow:0 0 6px #ff00ff;}
+#missionDesc{color:#ccc;font-size:clamp(8px,1.2vw,11px);line-height:1.4;}
+
+#minimap{position:absolute;top:clamp(58px,8vh,90px);right:clamp(8px,1.2vw,15px);width:clamp(90px,13vw,160px);height:clamp(90px,13vw,160px);background:rgba(0,0,30,0.85);border:2px solid #ff00ff;border-radius:4px;box-shadow:0 0 12px rgba(255,0,255,0.4);}
+
+#weaponPanel{position:absolute;bottom:clamp(8px,1.2vh,15px);right:clamp(8px,1.2vw,15px);text-align:right;}
+#weaponName{color:#00ffff;font-size:clamp(11px,1.7vw,16px);font-weight:bold;text-shadow:0 0 8px #00ffff,2px 2px 4px #000;margin-bottom:2px;}
+#ammoCount{color:#fff;font-size:clamp(18px,2.8vw,28px);font-weight:bold;text-shadow:0 0 8px #ff00ff,2px 2px 4px #000;}
+#ammoCount span{color:#888;font-size:clamp(11px,1.8vw,18px);}
+
+#moneyPanel{position:absolute;bottom:clamp(8px,1.2vh,15px);left:clamp(8px,1.2vw,15px);}
+#moneyDisplay{color:#00ff66;font-size:clamp(16px,2.6vw,24px);font-weight:bold;text-shadow:0 0 10px #00ff66,2px 2px 4px #000;}
+
+#damageFlash{position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at center,transparent 30%,rgba(255,0,0,0.4) 100%);z-index:15;opacity:0;pointer-events:none;transition:opacity 0.1s;}
+#gameMessage{position:absolute;top:25%;left:50%;transform:translateX(-50%);color:#ffcc00;font-size:clamp(18px,4vw,28px);font-weight:bold;text-shadow:0 0 15px #ff6600,3px 3px 6px #000;z-index:12;opacity:0;transition:opacity 0.3s;text-align:center;}
+
+#missionNotice{position:absolute;top:35%;left:50%;transform:translateX(-50%);z-index:18;opacity:0;transition:opacity 0.5s;text-align:center;pointer-events:none;}
+#missionNotice .mission-label{font-size:14px;color:#00ffff;letter-spacing:6px;margin-bottom:5px;text-shadow:0 0 8px #00ffff;}
+#missionNotice .mission-name{font-size:clamp(24px,5vw,40px);color:#ff00ff;text-shadow:0 0 20px #ff00ff,3px 3px 0 #00ffff;font-weight:bold;}
+
+#dialogBox{position:absolute;bottom:0;left:0;width:100%;background:linear-gradient(180deg,rgba(20,0,40,0.9),rgba(40,0,60,0.95));border-top:3px solid #ff00ff;padding:15px 20px;z-index:20;display:none;min-height:100px;box-shadow:0 -5px 20px rgba(255,0,255,0.3);}
+#dialogSpeaker{color:#00ffff;font-size:16px;font-weight:bold;margin-bottom:6px;text-shadow:0 0 8px #00ffff;}
+#dialogText{color:#fff;font-size:15px;line-height:1.6;}
+#dialogHint{position:absolute;bottom:8px;right:20px;color:#ff00ff;font-size:12px;animation:blink 1s infinite;}
+@keyframes blink{0%,50%{opacity:1;}51%,100%{opacity:0.3;}}
+
+#endScreen{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,0,30,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:90;}
+#endScreen h2{font-size:clamp(28px,6vw,48px);color:#ff0066;margin-bottom:15px;text-shadow:0 0 20px #ff0066,3px 3px 0 #00ffff;}
+#endStats{color:#fff;font-size:15px;line-height:2;margin-bottom:30px;text-align:center;}
+
+#topBtns{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:50;}
+.top-btn{width:36px;height:36px;background:rgba(0,0,30,0.7);border:1px solid #00ffff;border-radius:4px;color:#00ffff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+#hintText{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;background:rgba(0,0,30,0.8);padding:6px 16px;border-radius:4px;display:none;border:1px solid #00ffff;}
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="canvasWrap">
+    <canvas id="gameCanvas"></canvas>
+    <div id="damageFlash"></div>
+    <div id="gameMessage"></div>
+    <div id="missionNotice"><div class="mission-label">任务开始</div><div class="mission-name" id="missionNoticeName"></div></div>
+    <div id="hud">
+      <div id="statusPanel">
+        <div class="stat-bar"><div class="stat-fill" id="healthFill" style="width:100%"></div><div class="stat-label">生命 100</div></div>
+        <div class="stat-bar"><div class="stat-fill" id="armorFill" style="width:0%"></div><div class="stat-label">护甲 0</div></div>
+      </div>
+      <div id="wantedPanel"><div id="wantedStars">★★★★★</div></div>
+      <div id="missionPanel"><div id="missionTitle"></div><div id="missionDesc"></div></div>
+      <canvas id="minimap" width="160" height="160"></canvas>
+      <div id="weaponPanel"><div id="weaponName">拳头</div><div id="ammoCount">∞</div></div>
+      <div id="moneyPanel"><div id="moneyDisplay">$0</div></div>
+      <div id="hintText"></div>
+    </div>
+    <div id="dialogBox">
+      <div id="dialogSpeaker"></div>
+      <div id="dialogText"></div>
+      <div id="dialogHint"><span id="dialogHintText">按 E 继续</span> ▼</div>
+    </div>
+    <div id="topBtns">
+      <button class="top-btn" id="bgmBtn" onclick="toggleBGM()">🎵</button>
+      <button class="top-btn" onclick="toggleSound()">🔊</button>
+    </div>
+
+    <!-- 移动端虚拟按键（叠加在画面内） -->
+    <div id="mobileControls">
+      <div class="joystick" id="joystick">
+        <div class="joystick-base-ring"></div>
+        <div class="joystick-knob" id="joystickKnob"></div>
+      </div>
+      <div class="actionBtns">
+        <button class="abtn abtn-weapon" id="btnWeapon">武器</button>
+        <button class="abtn abtn-shoot" id="btnShoot">射击</button>
+        <button class="abtn abtn-brake" id="btnBrake">手刹</button>
+        <button class="abtn abtn-enter" id="btnEnter">上车</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="titleScreen">
+    <h1>罪恶都市</h1>
+    <div class="sub">VICE CITY NIGHTS</div>
+    <div class="tagline">—— 1986 · 阳光、沙滩、金钱与罪恶 ——</div>
+    <button class="title-btn" onclick="startGame()">开始游戏</button>
+    <button class="title-btn alt" onclick="showHelp()">操作说明</button>
+  </div>
+
+  <div id="endScreen">
+    <h2 id="endTitle">你死了</h2>
+    <div id="endStats"></div>
+    <button class="title-btn" onclick="restartGame()">重新开始</button>
+    <button class="title-btn alt" onclick="backToTitle()">返回标题</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 基础设置
+// ============================================================
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+const minimapCanvas=document.getElementById('minimap');
+const mmCtx=minimapCanvas.getContext('2d');
+let W,H;
+// 触屏检测（提前到 resize 之前）
+const isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+function resize(){
+  const ratio=16/9;
+  let cw=window.innerWidth,ch=window.innerHeight;
+  // 触屏设备旋转90度后，可用宽高互换
+  if(isTouch){const t=cw;cw=ch;ch=t;}
+  let w,h;
+  if(cw/ch>ratio){h=ch;w=h*ratio;}
+  else{w=cw;h=w/ratio;}
+  w=Math.floor(w);h=Math.floor(h);
+  const wrap=document.getElementById('canvasWrap');
+  wrap.style.width=w+'px';wrap.style.height=h+'px';
+  W=canvas.width=w;H=canvas.height=h;
+  canvas.style.width=w+'px';canvas.style.height=h+'px';
+}
+resize();
+window.addEventListener('resize',resize);
+window.addEventListener('orientationchange',()=>setTimeout(resize,100));
+
+// ============================================================
+// 顶级音效系统（罪恶都市版）
+// ============================================================
+let audioCtx=null,soundOn=true,bgmOn=true;
+let masterGain=null;
+function initAudio(){
+  if(!audioCtx){
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    masterGain=audioCtx.createGain();
+    masterGain.gain.value=0.7;
+    masterGain.connect(audioCtx.destination);
+  }
+  if(audioCtx.state==='suspended')audioCtx.resume();
+}
+function toggleSound(){soundOn=!soundOn;document.querySelector('#topBtns .top-btn:nth-child(2)').textContent=soundOn?'🔊':'🔇';if(masterGain)masterGain.gain.value=soundOn?0.7:0;}
+
+// 基础音效生成器（带混响）
+function createReverb(){
+  if(!audioCtx)return null;
+  const convolver=audioCtx.createConvolver();
+  const rate=audioCtx.sampleRate;
+  const length=rate*2;
+  const impulse=audioCtx.createBuffer(2,length,rate);
+  for(let ch=0;ch<2;ch++){
+    const data=impulse.getChannelData(ch);
+    for(let i=0;i<length;i++){
+      data[i]=(Math.random()*2-1)*Math.pow(1-i/length,2.5);
+    }
+  }
+  convolver.buffer=impulse;
+  return convolver;
+}
+let reverbNode=null;
+function getReverb(){if(!reverbNode&&audioCtx)reverbNode=createReverb();return reverbNode;}
+
+function playTone(freq,dur,type,vol,slideTo,delay){
+  if(!soundOn||!audioCtx)return;
+  const t=audioCtx.currentTime+(delay||0);
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type||'square';
+  o.frequency.setValueAtTime(freq,t);
+  if(slideTo)o.frequency.exponentialRampToValueAtTime(Math.max(1,slideTo),t+dur);
+  g.gain.setValueAtTime(vol||0.2,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  o.connect(g);
+  // 干声
+  g.connect(masterGain);
+  // 混响
+  const rev=getReverb();
+  if(rev){const rg=audioCtx.createGain();rg.gain.value=0.15;g.connect(rg);rg.connect(rev);rev.connect(masterGain);}
+  o.start(t);o.stop(t+dur);
+}
+function playNoise(dur,vol,freq,type,delay){
+  if(!soundOn||!audioCtx)return;
+  const t=audioCtx.currentTime+(delay||0);
+  const sz=Math.floor(audioCtx.sampleRate*dur);
+  const buf=audioCtx.createBuffer(1,sz,audioCtx.sampleRate);
+  const dt=buf.getChannelData(0);
+  for(let i=0;i<sz;i++)dt[i]=Math.random()*2-1;
+  const n=audioCtx.createBufferSource();n.buffer=buf;
+  const f=audioCtx.createBiquadFilter();
+  f.type=type||'lowpass';f.frequency.value=freq||1000;
+  const g=audioCtx.createGain();
+  g.gain.setValueAtTime(vol||0.2,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  n.connect(f);f.connect(g);g.connect(masterGain);
+  const rev=getReverb();
+  if(rev){const rg=audioCtx.createGain();rg.gain.value=0.1;g.connect(rg);rg.connect(rev);rev.connect(masterGain);}
+  n.start(t);n.stop(t+dur);
+}
+
+// 武器音效（更真实）
+const WeaponSFX={
+  pistol:()=>{
+    // 手枪：初始冲击+高频衰减+弹壳
+    playTone(180,0.08,'square',0.25,40);
+    playNoise(0.06,0.15,5000,'highpass');
+    playTone(800,0.03,'sine',0.08,200,0.02);
+  },
+  shotgun:()=>{
+    // 霰弹枪：低频轰鸣+大范围噪声
+    playTone(120,0.2,'sawtooth',0.3,30);
+    playNoise(0.2,0.25,2000);
+    playTone(60,0.15,'sine',0.15,20);
+  },
+  smg:()=>{
+    // 冲锋枪：短促高频
+    playTone(250,0.05,'square',0.18,80);
+    playNoise(0.04,0.1,6000,'highpass');
+  },
+  rocket:()=>{
+    // 火箭发射：呼啸声
+    playTone(300,0.4,'sawtooth',0.15,800);
+    playNoise(0.4,0.12,1500,'bandpass');
+  },
+  explosion:()=>{
+    // 爆炸：低频冲击+中频爆裂+高频碎裂+延迟回声
+    playTone(50,0.6,'sine',0.35,15);
+    playTone(80,0.4,'sawtooth',0.25,20);
+    playNoise(0.5,0.3,800);
+    playNoise(0.3,0.15,4000,'highpass',0.05);
+    // 回声
+    playTone(40,0.5,'sine',0.1,12,0.15);
+    playNoise(0.4,0.08,600,'lowpass',0.15);
+  },
+  punch:()=>{
+    playNoise(0.08,0.12,300);
+    playTone(150,0.05,'square',0.1,80);
+  }
+};
+
+// 车辆音效（更真实的多层引擎）
+let engineOsc1=null,engineOsc2=null,engineGain1=null,engineGain2=null,engineNoise=null,engineNoiseGain=null;
+function startEngine(){
+  if(!audioCtx||engineOsc1)return;
+  // 低频轰鸣
+  engineOsc1=audioCtx.createOscillator();
+  engineGain1=audioCtx.createGain();
+  engineOsc1.type='sawtooth';
+  engineOsc1.frequency.value=50;
+  engineGain1.gain.value=0.05;
+  engineOsc1.connect(engineGain1);engineGain1.connect(masterGain);
+  engineOsc1.start();
+  // 中频
+  engineOsc2=audioCtx.createOscillator();
+  engineGain2=audioCtx.createGain();
+  engineOsc2.type='square';
+  engineOsc2.frequency.value=100;
+  engineGain2.gain.value=0.02;
+  engineOsc2.connect(engineGain2);engineGain2.connect(masterGain);
+  engineOsc2.start();
+  // 高频气流噪声
+  const sz=audioCtx.sampleRate*2;
+  const buf=audioCtx.createBuffer(1,sz,audioCtx.sampleRate);
+  const dt=buf.getChannelData(0);
+  for(let i=0;i<sz;i++)dt[i]=Math.random()*2-1;
+  engineNoise=audioCtx.createBufferSource();
+  engineNoise.buffer=buf;engineNoise.loop=true;
+  const nf=audioCtx.createBiquadFilter();
+  nf.type='highpass';nf.frequency.value=2000;
+  engineNoiseGain=audioCtx.createGain();
+  engineNoiseGain.gain.value=0.01;
+  engineNoise.connect(nf);nf.connect(engineNoiseGain);engineNoiseGain.connect(masterGain);
+  engineNoise.start();
+}
+function updateEngine(speed){
+  if(!engineOsc1||!soundOn)return;
+  const rpm=50+Math.abs(speed)*10;
+  engineOsc1.frequency.setTargetAtTime(rpm,audioCtx.currentTime,0.08);
+  engineOsc2.frequency.setTargetAtTime(rpm*2,audioCtx.currentTime,0.08);
+  engineGain1.gain.setTargetAtTime(0.03+Math.abs(speed)*0.008,audioCtx.currentTime,0.1);
+  engineGain2.gain.setTargetAtTime(0.01+Math.abs(speed)*0.005,audioCtx.currentTime,0.1);
+  engineNoiseGain.gain.setTargetAtTime(0.005+Math.abs(speed)*0.003,audioCtx.currentTime,0.1);
+}
+function stopEngine(){
+  if(engineOsc1){try{engineOsc1.stop();}catch(e){}engineOsc1=null;}
+  if(engineOsc2){try{engineOsc2.stop();}catch(e){}engineOsc2=null;}
+  if(engineNoise){try{engineNoise.stop();}catch(e){}engineNoise=null;}
+  engineGain1=engineGain2=engineNoiseGain=null;
+}
+const CarSFX={
+  brake:()=>{playNoise(0.3,0.06,3000,'highpass');},
+  crash:()=>{
+    playNoise(0.2,0.18,400);
+    playTone(100,0.15,'square',0.15,40);
+    playTone(60,0.2,'sine',0.1,30,0.05);
+  },
+  door:()=>{playNoise(0.1,0.08,500);playTone(200,0.08,'square',0.08,150);},
+  horn:()=>{playTone(350,0.2,'square',0.1);setTimeout(()=>playTone(350,0.2,'square',0.1),250);}
+};
+
+// 通用音效
+const GameSFX={
+  pickup:()=>{playTone(660,0.08,'square',0.1);setTimeout(()=>playTone(880,0.1,'square',0.1),60);setTimeout(()=>playTone(1100,0.15,'square',0.1),120);},
+  hurt:()=>{playTone(300,0.15,'square',0.15,100);playNoise(0.1,0.1,300);},
+  wantedUp:()=>{[440,550,660,880].forEach((f,i)=>setTimeout(()=>playTone(f,0.12,'square',0.1),i*80));},
+  mission:()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.2,'triangle',0.1),i*120));},
+  death:()=>{[440,392,349,294,220,165].forEach((f,i)=>setTimeout(()=>playTone(f,0.35,'sawtooth',0.1),i*150));}
+};
+
+// BGM - 80年代合成器风格
+let bgmTimer=null,bgmStep=0;
+const BGM={
+  tempo:118,
+  bass:[55,55,49,49,41,41,49,49],
+  lead:[220,261.63,293.66,329.63,293.66,261.63,220,196],
+  pad:[110,130.81,146.83,164.81],
+  arp:[440,523.25,659.25,523.25,440,523.25,659.25,783.99]
+};
+function startBGM(){
+  if(!bgmOn||!audioCtx||bgmTimer)return;
+  bgmStep=0;
+  const beat=60/BGM.tempo*1000;
+  bgmTimer=setInterval(()=>{
+    if(!bgmOn||!audioCtx)return;
+    const s=bgmStep%16;
+    // 低音（每拍）
+    if(s%2===0)playTone(BGM.bass[Math.floor(s/2)%8],beat*0.001*1.5,'sawtooth',0.04);
+    // 主旋律（偶数小节）
+    if(s%4===0)playTone(BGM.lead[Math.floor(s/4)%8],beat*0.001*1.8,'triangle',0.035);
+    // 合成器琶音（80年代风格）
+    playTone(BGM.arp[s%8],beat*0.001*0.4,'square',0.015);
+    // 和声垫
+    if(s%8===0)playTone(BGM.pad[Math.floor(s/8)%4],beat*0.001*3,'sine',0.02);
+    // 鼓点
+    if(s%4===0)playNoise(0.06,0.05,200);
+    if(s===6||s===14)playNoise(0.08,0.04,8000,'highpass');
+    bgmStep++;
+  },beat);
+}
+function stopBGM(){if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null;}}
+function toggleBGM(){
+  bgmOn=!bgmOn;
+  document.getElementById('bgmBtn').textContent=bgmOn?'🎵':'🔇';
+  if(bgmOn&&gameRunning)startBGM();else stopBGM();
+}
+
+// ============================================================
+// 地图系统（罪恶都市 - 带海滩）
+// ============================================================
+const TILE=64;
+const MAP_W=80,MAP_H=80;
+const TILE_TYPES={ROAD:0,SIDEWALK:1,BUILDING:2,GRASS:3,WATER:4,PARKING:5,CROSSWALK:6,BEACH:7,SAND:8};
+let gameMap=[];
+let buildings=[];
+let palmTrees=[]; // 棕榈树
+let neonSigns=[]; // 霓虹招牌
+
+function generateCity(){
+  gameMap=[];
+  buildings=[];
+  palmTrees=[];
+  neonSigns=[];
+  // 初始化
+  for(let y=0;y<MAP_H;y++){
+    gameMap[y]=[];
+    for(let x=0;x<MAP_W;x++){
+      // 南边10行是海滩
+      if(y>=MAP_H-10){
+        gameMap[y][x]=y>=MAP_H-4?TILE_TYPES.WATER:TILE_TYPES.BEACH;
+      }else{
+        gameMap[y][x]=TILE_TYPES.GRASS;
+      }
+    }
+  }
+  // 道路网格（城市区域：y < MAP_H-12）
+  const cityBottom=MAP_H-12;
+  for(let y=0;y<cityBottom;y++){
+    for(let x=0;x<MAP_W;x++){
+      if(y%8===0||y%8===1||x%8===0||x%8===1){
+        gameMap[y][x]=TILE_TYPES.ROAD;
+      }
+    }
+  }
+  // 人行道
+  for(let y=0;y<cityBottom;y++){
+    for(let x=0;x<MAP_W;x++){
+      if(gameMap[y][x]===TILE_TYPES.GRASS){
+        let nearRoad=false;
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+          const ny=y+dy,nx=x+dx;
+          if(ny>=0&&ny<MAP_H&&nx>=0&&nx<MAP_W&&gameMap[ny][nx]===TILE_TYPES.ROAD)nearRoad=true;
+        }
+        if(nearRoad)gameMap[y][x]=TILE_TYPES.SIDEWALK;
+      }
+    }
+  }
+  // 斑马线
+  for(let y=0;y<cityBottom;y++){
+    for(let x=0;x<MAP_W;x++){
+      if(gameMap[y][x]===TILE_TYPES.ROAD&&y%8===0&&x%8===0){
+        gameMap[y][x]=TILE_TYPES.CROSSWALK;
+      }
+    }
+  }
+  // 沙滩过渡带（沙子）
+  for(let y=cityBottom;y<MAP_H-4;y++){
+    for(let x=0;x<MAP_W;x++){
+      if(gameMap[y][x]===TILE_TYPES.GRASS)gameMap[y][x]=TILE_TYPES.SAND;
+    }
+  }
+  // 生成建筑
+  let buildingId=0;
+  for(let by=0;by<cityBottom-2;by+=8){
+    for(let bx=0;bx<MAP_W;bx+=8){
+      const blockX=bx+2,blockY=by+2;
+      const blockW=4,blockH=4;
+      if(blockY+blockH>=cityBottom)continue;
+      const r=Math.random();
+      if(r<0.12){
+        // 公园（带棕榈树）
+        for(let y=blockY;y<blockY+blockH;y++){
+          for(let x=blockX;x<blockX+blockW;x++){
+            if(y<MAP_H&&x<MAP_W)gameMap[y][x]=TILE_TYPES.GRASS;
+          }
+        }
+        // 棕榈树
+        for(let i=0;i<3;i++){
+          palmTrees.push({
+            x:(blockX+Math.random()*blockW)*TILE,
+            y:(blockY+Math.random()*blockH)*TILE
+          });
+        }
+      }else if(r<0.22){
+        // 停车场
+        for(let y=blockY;y<blockY+blockH;y++){
+          for(let x=blockX;x<blockX+blockW;x++){
+            if(y<MAP_H&&x<MAP_W)gameMap[y][x]=TILE_TYPES.PARKING;
+          }
+        }
+      }else{
+        // 建筑
+        const numBuildings=Math.random()<0.5?1:(Math.random()<0.7?2:4);
+        if(numBuildings===1){
+          addBuilding(blockX,blockY,blockW,blockH,buildingId++);
+        }else if(numBuildings===2){
+          if(Math.random()<0.5){
+            addBuilding(blockX,blockY,blockW,2,buildingId++);
+            addBuilding(blockX,blockY+2,blockW,2,buildingId++);
+          }else{
+            addBuilding(blockX,blockY,2,blockH,buildingId++);
+            addBuilding(blockX+2,blockY,2,blockH,buildingId++);
+          }
+        }else{
+          addBuilding(blockX,blockY,2,2,buildingId++);
+          addBuilding(blockX+2,blockY,2,2,buildingId++);
+          addBuilding(blockX,blockY+2,2,2,buildingId++);
+          addBuilding(blockX+2,blockY+2,2,2,buildingId++);
+        }
+      }
+    }
+  }
+  // 海滩边的棕榈树
+  for(let i=0;i<20;i++){
+    palmTrees.push({
+      x:Math.random()*MAP_W*TILE,
+      y:(cityBottom+1+Math.random()*3)*TILE
+    });
+  }
+  // 霓虹招牌（随机在建筑上）
+  for(let i=0;i<15;i++){
+    const b=buildings[Math.floor(Math.random()*buildings.length)];
+    if(b){
+      neonSigns.push({
+        x:(b.x+Math.random()*b.w)*TILE,
+        y:b.y*TILE,
+        color:['#ff00ff','#00ffff','#ff0066','#ffff00','#ff6600'][Math.floor(Math.random()*5)],
+        text:['BAR','CLUB','HOTEL','CASINO','MOTEL','CAFE','DISCO'][Math.floor(Math.random()*7)]
+      });
+    }
+  }
+}
+
+function addBuilding(x,y,w,h,id){
+  // 罪恶都市建筑高度（更高，更有迈阿密风格）
+  const height=5+Math.floor(Math.random()*20);
+  // 迈阿密风格配色
+  const colors=[
+    ['#ff69b4','#cc3388','#ff99cc'], // 粉红
+    ['#00ced1','#0099aa','#66ffff'], // 青色
+    ['#ff8c00','#cc6600','#ffaa44'], // 橙色
+    ['#ffffff','#cccccc','#eeeeee'], // 白色
+    ['#9370db','#6644aa','#bb99ff'], // 紫色
+    ['#ff6347','#cc3322','#ff9988'], // 番茄红
+    ['#20b2aa','#118880','#66d0cc'], // 浅绿
+    ['#ffd700','#ccaa00','#ffee66']  // 金色
+  ];
+  const colorSet=colors[Math.floor(Math.random()*colors.length)];
+  const building={
+    id,x,y,w,h,height,
+    color:colorSet[0],darkColor:colorSet[1],lightColor:colorSet[2],
+    windows:true,
+    neon:Math.random()>0.5
+  };
+  buildings.push(building);
+  for(let by=y;by<y+h;by++){
+    for(let bx=x;bx<x+w;bx++){
+      if(by<MAP_H&&bx<MAP_W)gameMap[by][bx]=TILE_TYPES.BUILDING;
+    }
+  }
+}
+
+function isSolid(px,py){
+  const tx=Math.floor(px/TILE),ty=Math.floor(py/TILE);
+  if(tx<0||tx>=MAP_W||ty<0||ty>=MAP_H)return true;
+  return gameMap[ty][tx]===TILE_TYPES.BUILDING||gameMap[ty][tx]===TILE_TYPES.WATER;
+}
+function isRoad(px,py){
+  const tx=Math.floor(px/TILE),ty=Math.floor(py/TILE);
+  if(tx<0||tx>=MAP_W||ty<0||ty>=MAP_H)return false;
+  const t=gameMap[ty][tx];
+  return t===TILE_TYPES.ROAD||t===TILE_TYPES.CROSSWALK||t===TILE_TYPES.PARKING||t===TILE_TYPES.BEACH||t===TILE_TYPES.SAND;
+}
+
+// ============================================================
+// 渲染系统（罪恶都市风格）
+// ============================================================
+let camera={x:0,y:0};
+function updateCamera(){
+  const targetX=player.inCar?player.car.x:player.x;
+  const targetY=player.inCar?player.car.y:player.y;
+  camera.x+=(targetX-W/2-camera.x)*0.1;
+  camera.y+=(targetY-H/2-camera.y)*0.1;
+}
+
+function render(){
+  // 天空渐变（罪恶都市黄昏风格）
+  const skyGrad=ctx.createLinearGradient(0,0,0,H);
+  skyGrad.addColorStop(0,'#1a0033');
+  skyGrad.addColorStop(0.3,'#330066');
+  skyGrad.addColorStop(0.6,'#660066');
+  skyGrad.addColorStop(0.8,'#ff0066');
+  skyGrad.addColorStop(1,'#ff6600');
+  ctx.fillStyle=skyGrad;
+  ctx.fillRect(0,0,W,H);
+
+  const startX=Math.max(0,Math.floor(camera.x/TILE)-1);
+  const endX=Math.min(MAP_W,Math.ceil((camera.x+W)/TILE)+1);
+  const startY=Math.max(0,Math.floor(camera.y/TILE)-1);
+  const endY=Math.min(MAP_H,Math.ceil((camera.y+H)/TILE)+1);
+
+  // 地面
+  for(let y=startY;y<endY;y++){
+    for(let x=startX;x<endX;x++){
+      const sx=x*TILE-camera.x;
+      const sy=y*TILE-camera.y;
+      drawTile(x,y,sx,sy);
+    }
+  }
+
+  // 收集渲染对象
+  const renderables=[];
+  cars.forEach(c=>{if(c.active)renderables.push({y:c.y,type:'car',obj:c});});
+  pedestrians.forEach(p=>{if(p.alive)renderables.push({y:p.y,type:'ped',obj:p});});
+  cops.forEach(c=>{if(c.alive)renderables.push({y:c.y,type:'cop',obj:c});});
+  if(!player.inCar)renderables.push({y:player.y,type:'player',obj:player});
+  bullets.forEach(b=>renderables.push({y:b.y,type:'bullet',obj:b}));
+  particles.forEach(p=>renderables.push({y:p.y,type:'particle',obj:p}));
+  // 棕榈树
+  palmTrees.forEach(t=>{
+    if(t.x>camera.x-100&&t.x<camera.x+W+100&&t.y>camera.y-100&&t.y<camera.y+H+100){
+      renderables.push({y:t.y,type:'palm',obj:t});
+    }
+  });
+  renderables.sort((a,b)=>a.y-b.y);
+  renderables.forEach(r=>{
+    if(r.type==='car')drawCar(r.obj);
+    else if(r.type==='ped')drawPedestrian(r.obj);
+    else if(r.type==='cop')drawCop(r.obj);
+    else if(r.type==='player')drawPlayer();
+    else if(r.type==='bullet')drawBullet(r.obj);
+    else if(r.type==='particle')drawParticle(r.obj);
+    else if(r.type==='palm')drawPalmTree(r.obj);
+  });
+
+  // 建筑
+  buildings.forEach(b=>{
+    if(b.x*TILE+b.w*TILE<camera.x||b.x*TILE>camera.x+W||
+       b.y*TILE+b.h*TILE<camera.y||b.y*TILE>camera.y+H)return;
+    drawBuilding(b);
+  });
+
+  // 霓虹招牌（在建筑前）
+  neonSigns.forEach(n=>{
+    if(n.x>camera.x-50&&n.x<camera.x+W+50&&n.y>camera.y-50&&n.y<camera.y+H+50){
+      drawNeonSign(n);
+    }
+  });
+
+  // 车灯
+  if(player.inCar&&player.car){
+    drawCarLights(player.car);
+  }
+}
+
+function drawTile(x,y,sx,sy){
+  const t=gameMap[y][x];
+  if(t===TILE_TYPES.ROAD){
+    ctx.fillStyle='#2a2a30';
+    ctx.fillRect(sx,sy,TILE,TILE);
+    ctx.fillStyle='rgba(0,0,0,0.15)';
+    for(let i=0;i<3;i++){
+      ctx.fillRect(sx+((x*7+i*13)%TILE),sy+((y*11+i*17)%TILE),3,3);
+    }
+    if(x%8===0&&y%8!==0&&y%8!==1){
+      ctx.fillStyle='#ffcc00';
+      ctx.fillRect(sx+TILE/2-2,sy,4,TILE);
+    }
+    if(y%8===0&&x%8!==0&&x%8!==1){
+      ctx.fillStyle='#ffcc00';
+      ctx.fillRect(sx,sy+TILE/2-2,TILE,4);
+    }
+  }else if(t===TILE_TYPES.CROSSWALK){
+    ctx.fillStyle='#2a2a30';
+    ctx.fillRect(sx,sy,TILE,TILE);
+    ctx.fillStyle='#ddd';
+    for(let i=0;i<5;i++){
+      ctx.fillRect(sx+4+i*12,sy+8,8,TILE-16);
+    }
+  }else if(t===TILE_TYPES.SIDEWALK){
+    ctx.fillStyle='#c8b8a8';
+    ctx.fillRect(sx,sy,TILE,TILE);
+    ctx.strokeStyle='rgba(0,0,0,0.15)';
+    ctx.lineWidth=1;
+    ctx.strokeRect(sx+1,sy+1,TILE-2,TILE-2);
+  }else if(t===TILE_TYPES.GRASS){
+    ctx.fillStyle='#3a7a3a';
+    ctx.fillRect(sx,sy,TILE,TILE);
+    ctx.fillStyle='rgba(0,40,0,0.2)';
+    for(let i=0;i<5;i++){
+      ctx.fillRect(sx+((x*13+i*7)%TILE),sy+((y*17+i*11)%TILE),2,4);
+    }
+  }else if(t===TILE_TYPES.BEACH||t===TILE_TYPES.SAND){
+    // 沙滩
+    ctx.fillStyle='#e8d8a8';
+    ctx.fillRect(sx,sy,TILE,TILE);
+    ctx.fillStyle='rgba(180,150,100,0.3)';
+    for(let i=0;i<4;i++){
+      ctx.fillRect(sx+((x*11+i*13)%TILE),sy+((y*7+i*17)%TILE),4,2);
+    }
+  }else if(t===TILE_TYPES.WATER){
+    // 海水（动态波纹）
+    const wave=Math.sin(Date.now()*0.002+x*0.5+y*0.3)*10;
+    ctx.fillStyle=`rgb(${30+wave},${80+wave},${140+wave})`;
+    ctx.fillRect(sx,sy,TILE,TILE);
+    // 波纹
+    ctx.strokeStyle='rgba(255,255,255,0.2)';
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(sx,sy+TILE/2+Math.sin(Date.now()*0.003+x)*5);
+    ctx.quadraticCurveTo(sx+TILE/2,sy+TILE/2+Math.sin(Date.now()*0.003+x+1)*8,sx+TILE,sy+TILE/2+Math.sin(Date.now()*0.003+x+2)*5);
+    ctx.stroke();
+  }else if(t===TILE_TYPES.PARKING){
+    ctx.fillStyle='#4a4a50';
+    ctx.fillRect(sx,sy,TILE,TILE);
+    ctx.strokeStyle='#fff';
+    ctx.lineWidth=2;
+    if(x%2===0){
+      ctx.beginPath();
+      ctx.moveTo(sx,sy);ctx.lineTo(sx,sy+TILE);
+      ctx.stroke();
+    }
+  }else if(t===TILE_TYPES.BUILDING){
+    ctx.fillStyle='#555';
+    ctx.fillRect(sx,sy,TILE,TILE);
+  }
+}
+
+function drawBuilding(b){
+  const sx=b.x*TILE-camera.x;
+  const sy=b.y*TILE-camera.y;
+  const bw=b.w*TILE;
+  const bh=b.h*TILE;
+  const height=b.height*5;
+
+  // 阴影
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.fillRect(sx+height*0.3,sy+height*0.3,bw,bh);
+
+  // 右侧面
+  ctx.fillStyle=b.darkColor;
+  ctx.beginPath();
+  ctx.moveTo(sx+bw,sy);
+  ctx.lineTo(sx+bw+height*0.4,sy-height*0.4);
+  ctx.lineTo(sx+bw+height*0.4,sy+bh-height*0.4);
+  ctx.lineTo(sx+bw,sy+bh);
+  ctx.closePath();
+  ctx.fill();
+
+  // 顶面
+  ctx.fillStyle=b.lightColor;
+  ctx.beginPath();
+  ctx.moveTo(sx,sy);
+  ctx.lineTo(sx+height*0.4,sy-height*0.4);
+  ctx.lineTo(sx+bw+height*0.4,sy-height*0.4);
+  ctx.lineTo(sx+bw,sy);
+  ctx.closePath();
+  ctx.fill();
+
+  // 正面
+  ctx.fillStyle=b.color;
+  ctx.fillRect(sx,sy,bw,bh);
+
+  // 窗户（罪恶都市风格 - 更多更亮）
+  if(b.windows){
+    const winW=10,winH=12;
+    const padX=6,padY=6;
+    const cols=Math.floor((bw-padX*2)/(winW+padX));
+    const rows=Math.floor((bh-padY*2)/(winH+padY));
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const wx=sx+padX+c*(winW+padX);
+        const wy=sy+padY+r*(winH+padY);
+        const lit=Math.random()>0.5;
+        if(lit){
+          // 亮灯（罪恶都市霓虹感）
+          const colors=['#ffffaa','#ffaaaa','#aaffff','#ffaaff','#aaffaa'];
+          ctx.fillStyle=colors[Math.floor(Math.random()*colors.length)];
+          ctx.fillRect(wx,wy,winW,winH);
+          ctx.fillStyle='rgba(255,255,255,0.4)';
+          ctx.fillRect(wx,wy,winW,3);
+        }else{
+          ctx.fillStyle='#1a1a2a';
+          ctx.fillRect(wx,wy,winW,winH);
+          ctx.fillStyle='rgba(100,150,200,0.15)';
+          ctx.fillRect(wx,wy,winW,3);
+        }
+      }
+    }
+  }
+
+  // 建筑边缘
+  ctx.strokeStyle='rgba(0,0,0,0.3)';
+  ctx.lineWidth=1;
+  ctx.strokeRect(sx,sy,bw,bh);
+}
+
+function drawPalmTree(t){
+  const sx=t.x-camera.x;
+  const sy=t.y-camera.y;
+  // 阴影
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.beginPath();ctx.ellipse(sx+3,sy+3,15,8,0,0,Math.PI*2);ctx.fill();
+  // 树干
+  ctx.fillStyle='#8b6914';
+  ctx.fillRect(sx-4,sy-40,8,45);
+  ctx.fillStyle='#6b4914';
+  ctx.fillRect(sx-4,sy-40,3,45);
+  // 树干纹理
+  ctx.strokeStyle='#5a3a10';
+  ctx.lineWidth=1;
+  for(let i=0;i<5;i++){
+    ctx.beginPath();
+    ctx.moveTo(sx-4,sy-35+i*8);
+    ctx.lineTo(sx+4,sy-33+i*8);
+    ctx.stroke();
+  }
+  // 棕榈叶（放射状）
+  const leafColors=['#228b22','#2ea82e','#3cb03c','#1e7b1e'];
+  for(let i=0;i<8;i++){
+    const angle=(i/8)*Math.PI*2+Math.sin(Date.now()*0.001+i)*0.1;
+    const len=25+Math.random()*5;
+    ctx.save();
+    ctx.translate(sx,sy-40);
+    ctx.rotate(angle);
+    ctx.fillStyle=leafColors[i%leafColors.length];
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(len*0.5,-8,len,0);
+    ctx.quadraticCurveTo(len*0.5,8,0,0);
+    ctx.fill();
+    ctx.restore();
+  }
+  // 椰子
+  ctx.fillStyle='#4a3020';
+  ctx.beginPath();ctx.arc(sx-5,sy-38,3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(sx+5,sy-38,3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(sx,sy-42,3,0,Math.PI*2);ctx.fill();
+}
+
+function drawNeonSign(n){
+  const sx=n.x-camera.x;
+  const sy=n.y-camera.y;
+  const pulse=0.7+Math.sin(Date.now()*0.005)*0.3;
+  // 光晕
+  ctx.fillStyle=n.color;
+  ctx.globalAlpha=pulse*0.3;
+  ctx.fillRect(sx-20,sy-15,40,20);
+  ctx.globalAlpha=1;
+  // 招牌底板
+  ctx.fillStyle='#111';
+  ctx.fillRect(sx-18,sy-13,36,16);
+  // 霓虹文字
+  ctx.fillStyle=n.color;
+  ctx.globalAlpha=pulse;
+  ctx.font='bold 10px monospace';
+  ctx.textAlign='center';
+  ctx.fillText(n.text,sx,sy);
+  ctx.globalAlpha=1;
+  ctx.textAlign='left';
+}
+
+// ============================================================
+// 玩家
+// ============================================================
+let player={x:0,y:0,angle:0,speed:0,health:100,armor:0,money:0,weapon:'fist',ammo:{fist:Infinity,pistol:0,shotgun:0,smg:0,rocket:0},weapons:['fist'],wanted:0,inCar:false,car:null,fireCooldown:0,alive:true};
+
+const WEAPONS={
+  fist:{name:'拳头',damage:10,cooldown:20,range:40,melee:true},
+  pistol:{name:'手枪',damage:25,cooldown:15,range:400,speed:12,spread:0.05},
+  shotgun:{name:'霰弹枪',damage:15,cooldown:40,range:250,speed:10,spread:0.2,pellets:6},
+  smg:{name:'冲锋枪',damage:12,cooldown:6,range:350,speed:14,spread:0.1},
+  rocket:{name:'火箭筒',damage:100,cooldown:60,range:500,speed:8,spread:0,explosive:true,radius:100}
+};
+
+function drawPlayer(){
+  const sx=player.x-camera.x;
+  const sy=player.y-camera.y;
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.rotate(player.angle);
+  // 阴影
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.beginPath();ctx.ellipse(2,3,12,10,0,0,Math.PI*2);ctx.fill();
+  // 身体（80年代花衬衫）
+  ctx.fillStyle='#ff6600';
+  ctx.beginPath();ctx.ellipse(0,0,10,12,0,0,Math.PI*2);ctx.fill();
+  // 衬衫花纹
+  ctx.fillStyle='#ffff00';
+  ctx.fillRect(-6,-4,3,3);ctx.fillRect(2,-2,3,3);ctx.fillRect(-3,4,3,3);
+  // 头
+  ctx.fillStyle='#e8c8a0';
+  ctx.beginPath();ctx.arc(0,-2,7,0,Math.PI*2);ctx.fill();
+  // 头发（80年代风格）
+  ctx.fillStyle='#4a3020';
+  ctx.beginPath();ctx.arc(0,-4,7,Math.PI,0);ctx.fill();
+  ctx.fillRect(-6,-4,3,6);
+  // 武器
+  if(player.weapon!=='fist'){
+    ctx.fillStyle='#222';
+    if(player.weapon==='pistol')ctx.fillRect(8,-2,14,4);
+    else if(player.weapon==='shotgun')ctx.fillRect(8,-3,22,6);
+    else if(player.weapon==='smg'){ctx.fillRect(8,-3,18,6);ctx.fillStyle='#333';ctx.fillRect(12,3,5,8);}
+    else if(player.weapon==='rocket'){ctx.fillStyle='#4a4a2a';ctx.fillRect(8,-4,24,8);ctx.fillStyle='#6a6a3a';ctx.fillRect(8,-4,24,2);}
+  }
+  ctx.restore();
+}
+
+// ============================================================
+// 车辆（80年代风格）
+// ============================================================
+let cars=[];
+const CAR_TYPES={
+  sedan:{name:'轿车',maxSpeed:5,accel:0.15,handling:0.05,color:'#cc3333',width:36,length:56,health:100},
+  sports:{name:'跑车',maxSpeed:7.5,accel:0.22,handling:0.07,color:'#ff00ff',width:32,length:52,health:80},
+  truck:{name:'卡车',maxSpeed:3.5,accel:0.1,handling:0.03,color:'#666666',width:42,length:70,health:200},
+  police:{name:'警车',maxSpeed:7,accel:0.2,handling:0.06,color:'#ffffff',width:36,length:56,health:120,police:true},
+  cabrio:{name:'敞篷车',maxSpeed:6.5,accel:0.2,handling:0.065,color:'#ff6600',width:34,length:54,health:90}
+};
+
+function spawnCars(){
+  cars=[];
+  const types=['sedan','sports','truck','cabrio'];
+  const colors=['#ff0066','#00ffff','#ffcc00','#ff6600','#ffffff','#ff00ff','#00ff66','#6600ff'];
+  for(let i=0;i<35;i++){
+    let attempts=0;
+    while(attempts<20){
+      const x=Math.random()*MAP_W*TILE;
+      const y=Math.random()*(MAP_H-15)*TILE;
+      if(isRoad(x,y)){
+        const type=types[Math.floor(Math.random()*types.length)];
+        const ct=CAR_TYPES[type];
+        cars.push({
+          x,y,angle:Math.random()*Math.PI*2,
+          speed:0,type,
+          color:colors[Math.floor(Math.random()*colors.length)],
+          width:ct.width,length:ct.length,
+          maxSpeed:ct.maxSpeed,accel:ct.accel,handling:ct.handling,
+          health:ct.health,active:true,isPlayerCar:false,police:false
+        });
+        break;
+      }
+      attempts++;
+    }
+  }
+}
+
+function updateCar(car){
+  if(!car.active)return;
+  if(car.speed>0)car.speed-=0.02;
+  else if(car.speed<0)car.speed+=0.02;
+  if(Math.abs(car.speed)<0.02)car.speed=0;
+  const nx=car.x+Math.cos(car.angle)*car.speed;
+  const ny=car.y+Math.sin(car.angle)*car.speed;
+  const halfL=car.length/2,halfW=car.width/2;
+  const cos=Math.cos(car.angle),sin=Math.sin(car.angle);
+  let collided=false;
+  const corners=[
+    [nx+cos*halfL-sin*halfW,ny+sin*halfL+cos*halfW],
+    [nx+cos*halfL+sin*halfW,ny+sin*halfL-cos*halfW],
+    [nx-cos*halfL-sin*halfW,ny-sin*halfL+cos*halfW],
+    [nx-cos*halfL+sin*halfW,ny-sin*halfL-cos*halfW]
+  ];
+  for(const [cx,cy] of corners){
+    if(isSolid(cx,cy)){collided=true;break;}
+  }
+  if(!collided){
+    for(const other of cars){
+      if(other===car||!other.active)continue;
+      if(Math.hypot(nx-other.x,ny-other.y)<(car.length+other.length)/2.5){
+        collided=true;
+        const impact=Math.abs(car.speed);
+        if(impact>1){
+          car.health-=impact*5;
+          CarSFX.crash();
+          if(car.health<=0){car.active=false;explode(car.x,car.y);}
+        }
+        car.speed*=-0.3;
+        break;
+      }
+    }
+  }
+  if(!collided){car.x=nx;car.y=ny;}
+  else{car.speed*=-0.2;}
+}
+
+function drawCar(car){
+  const sx=car.x-camera.x;
+  const sy=car.y-camera.y;
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.rotate(car.angle);
+  const w=car.width,l=car.length;
+  // 阴影
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.beginPath();ctx.ellipse(3,3,l/2,w/2,0,0,Math.PI*2);ctx.fill();
+  // 车身（80年代风格 - 更流线）
+  const bodyGrad=ctx.createLinearGradient(0,-w/2,0,w/2);
+  bodyGrad.addColorStop(0,shadeColor(car.color,30));
+  bodyGrad.addColorStop(0.5,car.color);
+  bodyGrad.addColorStop(1,shadeColor(car.color,-30));
+  ctx.fillStyle=bodyGrad;
+  roundRect(ctx,-l/2,-w/2,l,w,8);
+  ctx.fill();
+  // 车身亮条
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.fillRect(-l/2+5,-w/2+2,l-10,3);
+  // 敞篷/车顶
+  if(car.type==='cabrio'){
+    // 敞篷 - 没有车顶，显示座椅
+    ctx.fillStyle='#222';
+    ctx.fillRect(-l/6,-w/2+6,l/3,w-12);
+    ctx.fillStyle='#444';
+    ctx.fillRect(-l/8,-w/2+8,l/4,4);
+    ctx.fillRect(-l/8,w/2-12,l/4,4);
+  }else{
+    // 车顶
+    ctx.fillStyle=shadeColor(car.color,-15);
+    roundRect(ctx,-l/4,-w/2+4,l/2,w-8,4);
+    ctx.fill();
+  }
+  // 挡风玻璃
+  ctx.fillStyle='rgba(20,40,60,0.8)';
+  roundRect(ctx,l/8,-w/2+6,l/6,w-12,2);
+  ctx.fill();
+  // 后窗
+  roundRect(ctx,-l/5,-w/2+6,l/8,w-12,2);
+  ctx.fill();
+  // 车灯（更亮）
+  ctx.fillStyle='#ffffaa';
+  ctx.shadowColor='#ffff00';ctx.shadowBlur=8;
+  ctx.fillRect(l/2-3,-w/2+3,3,6);
+  ctx.fillRect(l/2-3,w/2-9,3,6);
+  ctx.shadowBlur=0;
+  // 尾灯
+  ctx.fillStyle='#ff0066';
+  ctx.shadowColor='#ff0066';ctx.shadowBlur=6;
+  ctx.fillRect(-l/2,-w/2+3,3,6);
+  ctx.fillRect(-l/2,w/2-9,3,6);
+  ctx.shadowBlur=0;
+  // 警车灯
+  if(car.police){
+    ctx.fillStyle=Date.now()%200<100?'#ff0000':'#660000';
+    ctx.shadowColor='#ff0000';ctx.shadowBlur=10;
+    ctx.fillRect(-4,-w/2-2,8,4);
+    ctx.shadowBlur=0;
+    ctx.fillStyle=Date.now()%200>=100?'#0000ff':'#000066';
+    ctx.shadowColor='#0000ff';ctx.shadowBlur=10;
+    ctx.fillRect(-4,w/2-2,8,4);
+    ctx.shadowBlur=0;
+  }
+  // 车轮
+  ctx.fillStyle='#111';
+  ctx.fillRect(-l/3,-w/2-3,10,6);
+  ctx.fillRect(-l/3,w/2-3,10,6);
+  ctx.fillRect(l/4,-w/2-3,10,6);
+  ctx.fillRect(l/4,w/2-3,10,6);
+  // 轮毂
+  ctx.fillStyle='#666';
+  ctx.fillRect(-l/3+2,-w/2-1,6,2);
+  ctx.fillRect(-l/3+2,w/2-1,6,2);
+  ctx.fillRect(l/4+2,-w/2-1,6,2);
+  ctx.fillRect(l/4+2,w/2-1,6,2);
+  ctx.restore();
+}
+
+function drawCarLights(car){
+  if(Math.abs(car.speed)<0.5)return;
+  const sx=car.x-camera.x;
+  const sy=car.y-camera.y;
+  const lightLen=120+Math.abs(car.speed)*20;
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.rotate(car.angle);
+  const grad=ctx.createRadialGradient(car.length/2+lightLen/2,0,0,car.length/2+lightLen/2,0,lightLen);
+  grad.addColorStop(0,'rgba(255,255,200,0.2)');
+  grad.addColorStop(1,'rgba(255,255,200,0)');
+  ctx.fillStyle=grad;
+  ctx.beginPath();
+  ctx.moveTo(car.length/2,-car.width/2);
+  ctx.lineTo(car.length/2+lightLen,-car.width);
+  ctx.lineTo(car.length/2+lightLen,car.width);
+  ctx.lineTo(car.length/2,car.width/2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function shadeColor(color,percent){
+  const num=parseInt(color.replace('#',''),16);
+  const amt=Math.round(2.55*percent);
+  const R=(num>>16)+amt;
+  const G=(num>>8&0x00FF)+amt;
+  const B=(num&0x0000FF)+amt;
+  return '#'+(0x1000000+(R<255?R<1?0:R:255)*0x10000+(G<255?G<1?0:G:255)*0x100+(B<255?B<1?0:B:255)).toString(16).slice(1);
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+function toggleCar(){
+  if(player.inCar){
+    player.inCar=false;
+    const car=player.car;
+    car.isPlayerCar=false;
+    player.x=car.x+Math.cos(car.angle+Math.PI/2)*30;
+    player.y=car.y+Math.sin(car.angle+Math.PI/2)*30;
+    player.car=null;
+    stopEngine();
+    CarSFX.door();
+  }else{
+    let nearest=null,minDist=60;
+    for(const car of cars){
+      if(!car.active)continue;
+      const d=Math.hypot(car.x-player.x,car.y-player.y);
+      if(d<minDist){minDist=d;nearest=car;}
+    }
+    if(nearest){
+      player.inCar=true;
+      player.car=nearest;
+      nearest.isPlayerCar=true;
+      player.x=nearest.x;
+      player.y=nearest.y;
+      startEngine();
+      CarSFX.door();
+    }
+  }
+}
+
+// ============================================================
+// 行人（80年代风格）
+// ============================================================
+let pedestrians=[];
+const PED_COLORS=['#ff0066','#00ffff','#ffcc00','#ff6600','#00ff66','#9900ff','#ff00ff','#0066ff'];
+const PED_HAIR=['#4a3020','#2a1a10','#8b6914','#d4a017','#1a1a1a','#cc3333'];
+
+function spawnPedestrians(){
+  pedestrians=[];
+  for(let i=0;i<45;i++){
+    let attempts=0;
+    while(attempts<20){
+      const x=Math.random()*MAP_W*TILE;
+      const y=Math.random()*(MAP_H-12)*TILE;
+      const tx=Math.floor(x/TILE),ty=Math.floor(y/TILE);
+      if(tx>=0&&tx<MAP_W&&ty>=0&&ty<MAP_H&&
+         (gameMap[ty][tx]===TILE_TYPES.SIDEWALK||gameMap[ty][tx]===TILE_TYPES.GRASS||gameMap[ty][tx]===TILE_TYPES.BEACH)){
+        pedestrians.push({
+          x,y,angle:Math.random()*Math.PI*2,
+          speed:0.5+Math.random()*0.5,
+          color:PED_COLORS[Math.floor(Math.random()*PED_COLORS.length)],
+          hairColor:PED_HAIR[Math.floor(Math.random()*PED_HAIR.length)],
+          alive:true,targetX:x,targetY:y,retargetTimer:0,panic:false,
+          isTourist:Math.random()>0.5
+        });
+        break;
+      }
+      attempts++;
+    }
+  }
+}
+
+function updatePedestrian(p){
+  if(!p.alive)return;
+  p.retargetTimer--;
+  if(p.retargetTimer<=0){
+    p.targetX=p.x+(Math.random()-0.5)*200;
+    p.targetY=p.y+(Math.random()-0.5)*200;
+    p.retargetTimer=100+Math.random()*200;
+  }
+  if(p.panic){
+    const dx=p.x-player.x,dy=p.y-player.y;
+    const d=Math.hypot(dx,dy);
+    if(d>300){p.panic=false;}
+    else{
+      p.angle=Math.atan2(-dy,-dx);
+      p.x+=Math.cos(p.angle)*p.speed*2;
+      p.y+=Math.sin(p.angle)*p.speed*2;
+      return;
+    }
+  }
+  const dx=p.targetX-p.x,dy=p.targetY-p.y;
+  const d=Math.hypot(dx,dy);
+  if(d>10){
+    p.angle=Math.atan2(dy,dx);
+    const nx=p.x+Math.cos(p.angle)*p.speed;
+    const ny=p.y+Math.sin(p.angle)*p.speed;
+    if(!isSolid(nx,ny)){p.x=nx;p.y=ny;}
+    else{p.retargetTimer=0;}
+  }else{p.retargetTimer=0;}
+}
+
+function drawPedestrian(p){
+  const sx=p.x-camera.x;
+  const sy=p.y-camera.y;
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.rotate(p.angle);
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.beginPath();ctx.ellipse(2,3,9,7,0,0,Math.PI*2);ctx.fill();
+  // 身体（80年代风格）
+  ctx.fillStyle=p.color;
+  ctx.beginPath();ctx.ellipse(0,0,8,10,0,0,Math.PI*2);ctx.fill();
+  // 游客穿花衬衫
+  if(p.isTourist){
+    ctx.fillStyle='#fff';
+    ctx.fillRect(-5,-4,2,2);ctx.fillRect(2,-2,2,2);ctx.fillRect(-2,3,2,2);
+  }
+  // 头
+  ctx.fillStyle='#e8c8a0';
+  ctx.beginPath();ctx.arc(0,-2,6,0,Math.PI*2);ctx.fill();
+  // 头发
+  ctx.fillStyle=p.hairColor;
+  ctx.beginPath();ctx.arc(0,-3,5,Math.PI,0);ctx.fill();
+  ctx.restore();
+}
+
+// ============================================================
+// 警察
+// ============================================================
+let cops=[];
+function spawnCop(x,y,inCar){
+  const cop={x,y,angle:0,speed:2,health:50,alive:true,inCar:inCar||false,car:null,fireCooldown:0,type:'cop'};
+  if(inCar){
+    const ct=CAR_TYPES.police;
+    const policeCar={x,y,angle:Math.random()*Math.PI*2,speed:0,type:'police',color:'#ffffff',
+      width:ct.width,length:ct.length,maxSpeed:ct.maxSpeed,accel:ct.accel,handling:ct.handling,
+      health:ct.health,active:true,isPlayerCar:false,police:true};
+    cars.push(policeCar);
+    cop.car=policeCar;
+  }
+  cops.push(cop);
+  return cop;
+}
+function updateCop(c){
+  if(!c.alive)return;
+  if(c.inCar&&c.car&&c.car.active){
+    const dx=player.x-c.car.x,dy=player.y-c.car.y;
+    const targetAngle=Math.atan2(dy,dx);
+    let angleDiff=targetAngle-c.car.angle;
+    while(angleDiff>Math.PI)angleDiff-=2*Math.PI;
+    while(angleDiff<-Math.PI)angleDiff+=2*Math.PI;
+    c.car.angle+=angleDiff*0.05;
+    c.car.speed=Math.min(c.car.maxSpeed,c.car.speed+c.car.accel);
+    updateCar(c.car);
+    c.x=c.car.x;c.y=c.car.y;
+    if(Math.hypot(dx,dy)<150){
+      c.inCar=false;
+      c.x=c.car.x+Math.cos(c.car.angle+Math.PI/2)*30;
+      c.y=c.car.y+Math.sin(c.car.angle+Math.PI/2)*30;
+    }
+  }else{
+    const dx=player.x-c.x,dy=player.y-c.y;
+    const dist=Math.hypot(dx,dy);
+    c.angle=Math.atan2(dy,dx);
+    if(dist>200){
+      const nx=c.x+Math.cos(c.angle)*c.speed;
+      const ny=c.y+Math.sin(c.angle)*c.speed;
+      if(!isSolid(nx,ny)){c.x=nx;c.y=ny;}
+    }
+    if(c.fireCooldown>0)c.fireCooldown--;
+    if(dist<350&&c.fireCooldown<=0&&!player.inCar){
+      c.fireCooldown=40;
+      WeaponSFX.pistol();
+      if(Math.random()<0.3)damagePlayer(8);
+    }
+  }
+}
+function drawCop(c){
+  if(c.inCar&&c.car)return;
+  const sx=c.x-camera.x;
+  const sy=c.y-camera.y;
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.rotate(c.angle);
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.beginPath();ctx.ellipse(2,3,10,8,0,0,Math.PI*2);ctx.fill();
+  // 警服
+  ctx.fillStyle='#1a3a6a';
+  ctx.beginPath();ctx.ellipse(0,0,9,11,0,0,Math.PI*2);ctx.fill();
+  // 警徽
+  ctx.fillStyle='#ffd700';
+  ctx.fillRect(-2,-4,4,4);
+  // 头
+  ctx.fillStyle='#e8c8a0';
+  ctx.beginPath();ctx.arc(0,-2,6,0,Math.PI*2);ctx.fill();
+  // 警帽
+  ctx.fillStyle='#1a3a6a';
+  ctx.fillRect(-6,-6,12,4);
+  ctx.fillStyle='#ffd700';
+  ctx.fillRect(-2,-7,4,2);
+  // 枪
+  ctx.fillStyle='#222';
+  ctx.fillRect(7,-2,12,3);
+  ctx.restore();
+}
+
+// 通缉系统
+let wantedTimer=0;
+function updateWanted(){
+  if(player.wanted>0){
+    wantedTimer--;
+    if(wantedTimer<=0){
+      player.wanted=Math.max(0,player.wanted-1);
+      wantedTimer=600;
+      updateWantedDisplay();
+    }
+    if(cops.filter(c=>c.alive).length<player.wanted*2+1&&Math.random()<0.01){
+      const angle=Math.random()*Math.PI*2;
+      const dist=500;
+      const x=player.x+Math.cos(angle)*dist;
+      const y=player.y+Math.sin(angle)*dist;
+      if(x>0&&x<MAP_W*TILE&&y>0&&y<MAP_H*TILE){
+        spawnCop(x,y,player.wanted>=2&&Math.random()<0.5);
+      }
+    }
+  }
+}
+function increaseWanted(amount){
+  const old=player.wanted;
+  player.wanted=Math.min(5,player.wanted+amount);
+  if(player.wanted>old){GameSFX.wantedUp();showMessage('通缉等级提升！');}
+  wantedTimer=600;
+  updateWantedDisplay();
+}
+function updateWantedDisplay(){
+  const stars=document.getElementById('wantedStars');
+  let html='';
+  for(let i=0;i<5;i++)html+=`<span class="${i<player.wanted?'star-on':'star-off'}">★</span>`;
+  stars.innerHTML=html;
+}
+
+// ============================================================
+// 武器和子弹
+// ============================================================
+let bullets=[],particles=[];
+function playerFire(){
+  if(player.fireCooldown>0)return;
+  const w=WEAPONS[player.weapon];
+  if(player.weapon!=='fist'&&player.ammo[player.weapon]<=0){
+    player.weapon='fist';
+    updateWeaponDisplay();
+    return;
+  }
+  player.fireCooldown=w.cooldown;
+  if(player.weapon!=='fist'){player.ammo[player.weapon]--;updateAmmoDisplay();}
+  const px=player.inCar?player.car.x:player.x;
+  const py=player.inCar?player.car.y:player.y;
+  const angle=player.inCar?player.car.angle:player.angle;
+  if(w.melee){
+    WeaponSFX.punch();
+    const range=50;
+    pedestrians.forEach(p=>{
+      if(!p.alive)return;
+      if(Math.hypot(p.x-px,p.y-py)<range){
+        p.alive=false;spawnParticles(p.x,p.y,'blood',8);increaseWanted(1);
+      }
+    });
+    cops.forEach(c=>{
+      if(!c.alive)return;
+      if(Math.hypot(c.x-px,c.y-py)<range){
+        c.health-=w.damage;
+        if(c.health<=0){c.alive=false;spawnParticles(c.x,c.y,'blood',10);increaseWanted(1);}
+      }
+    });
+  }else if(w.pellets){
+    WeaponSFX.shotgun();
+    for(let i=0;i<w.pellets;i++){
+      const a=angle+(Math.random()-0.5)*w.spread*2;
+      bullets.push({x:px+Math.cos(a)*20,y:py+Math.sin(a)*20,vx:Math.cos(a)*w.speed,vy:Math.sin(a)*w.speed,damage:w.damage,life:30,explosive:false});
+    }
+    spawnParticles(px+Math.cos(angle)*25,py+Math.sin(angle)*25,'muzzle',5);
+  }else{
+    if(player.weapon==='pistol')WeaponSFX.pistol();
+    else if(player.weapon==='smg')WeaponSFX.smg();
+    else if(player.weapon==='rocket')WeaponSFX.rocket();
+    const a=angle+(Math.random()-0.5)*w.spread;
+    bullets.push({x:px+Math.cos(a)*20,y:py+Math.sin(a)*20,vx:Math.cos(a)*w.speed,vy:Math.sin(a)*w.speed,damage:w.damage,life:60,explosive:w.explosive||false,radius:w.radius||0});
+    spawnParticles(px+Math.cos(angle)*25,py+Math.sin(angle)*25,'muzzle',3);
+  }
+}
+function updateBullets(){
+  bullets=bullets.filter(b=>{
+    b.x+=b.vx;b.y+=b.vy;b.life--;
+    if(b.life<=0)return false;
+    if(isSolid(b.x,b.y)){
+      if(b.explosive)explode(b.x,b.y,b.radius);
+      else spawnParticles(b.x,b.y,'spark',4);
+      return false;
+    }
+    for(const p of pedestrians){
+      if(!p.alive)continue;
+      if(Math.hypot(p.x-b.x,p.y-b.y)<15){
+        p.alive=false;spawnParticles(p.x,p.y,'blood',8);increaseWanted(1);
+        if(b.explosive)explode(b.x,b.y,b.radius);
+        return false;
+      }
+    }
+    for(const c of cops){
+      if(!c.alive)continue;
+      if(Math.hypot(c.x-b.x,c.y-b.y)<15){
+        c.health-=b.damage;spawnParticles(c.x,c.y,'blood',5);
+        if(c.health<=0){c.alive=false;increaseWanted(1);}
+        if(b.explosive)explode(b.x,b.y,b.radius);
+        return false;
+      }
+    }
+    for(const car of cars){
+      if(!car.active)continue;
+      if(Math.hypot(car.x-b.x,car.y-b.y)<car.length/2){
+        car.health-=b.damage;spawnParticles(b.x,b.y,'spark',4);
+        if(car.health<=0){car.active=false;explode(car.x,car.y);}
+        if(b.explosive)explode(b.x,b.y,b.radius);
+        return false;
+      }
+    }
+    return true;
+  });
+}
+function drawBullet(b){
+  const sx=b.x-camera.x;
+  const sy=b.y-camera.y;
+  if(b.explosive){
+    ctx.fillStyle='#ff6600';
+    ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ffcc00';
+    ctx.beginPath();ctx.arc(sx,sy,3,0,Math.PI*2);ctx.fill();
+    spawnParticles(b.x-b.vx,b.y-b.vy,'smoke',1);
+  }else{
+    ctx.fillStyle='#ffff00';
+    ctx.shadowColor='#ffff00';ctx.shadowBlur=6;
+    ctx.beginPath();ctx.arc(sx,sy,3,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+  }
+}
+function explode(x,y,radius){
+  radius=radius||80;
+  WeaponSFX.explosion();
+  spawnParticles(x,y,'explosion',35);
+  spawnParticles(x,y,'smoke',20);
+  pedestrians.forEach(p=>{
+    if(!p.alive)return;
+    if(Math.hypot(p.x-x,p.y-y)<radius){p.alive=false;spawnParticles(p.x,p.y,'blood',5);increaseWanted(1);}
+  });
+  cops.forEach(c=>{
+    if(!c.alive)return;
+    if(Math.hypot(c.x-x,c.y-y)<radius){c.health-=80;if(c.health<=0){c.alive=false;increaseWanted(1);}}
+  });
+  cars.forEach(car=>{
+    if(!car.active)return;
+    if(Math.hypot(car.x-x,car.y-y)<radius){
+      car.health-=80;
+      if(car.health<=0){car.active=false;setTimeout(()=>explode(car.x,car.y,60),100);}
+    }
+  });
+  const px=player.inCar?player.car.x:player.x;
+  const py=player.inCar?player.car.y:player.y;
+  const d=Math.hypot(px-x,py-y);
+  if(d<radius)damagePlayer((1-d/radius)*50);
+}
+
+// 粒子
+function spawnParticles(x,y,type,count){
+  for(let i=0;i<count;i++){
+    const angle=Math.random()*Math.PI*2;
+    const speed=type==='explosion'?2+Math.random()*6:1+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,
+      life:type==='smoke'?60+Math.random()*40:20+Math.random()*20,
+      maxLife:type==='smoke'?100:40,type,size:type==='explosion'?5+Math.random()*10:2+Math.random()*4});
+  }
+}
+function updateParticles(){
+  particles=particles.filter(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vx*=0.95;p.vy*=0.95;
+    if(p.type==='smoke'){p.vy-=0.05;p.size+=0.2;}
+    p.life--;return p.life>0;
+  });
+}
+function drawParticle(p){
+  const sx=p.x-camera.x;
+  const sy=p.y-camera.y;
+  const alpha=p.life/p.maxLife;
+  if(p.type==='blood'){
+    ctx.fillStyle=`rgba(150,0,0,${alpha})`;
+    ctx.beginPath();ctx.arc(sx,sy,p.size,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='explosion'){
+    const colors=['#ff0000','#ff6600','#ffcc00','#ffffff'];
+    ctx.fillStyle=colors[Math.floor(Math.random()*colors.length)];
+    ctx.globalAlpha=alpha;
+    ctx.beginPath();ctx.arc(sx,sy,p.size,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+  }else if(p.type==='smoke'){
+    ctx.fillStyle=`rgba(80,80,80,${alpha*0.5})`;
+    ctx.beginPath();ctx.arc(sx,sy,p.size,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='spark'){
+    ctx.fillStyle=`rgba(255,200,0,${alpha})`;
+    ctx.fillRect(sx-p.size/2,sy-p.size/2,p.size,p.size);
+  }else if(p.type==='muzzle'){
+    ctx.fillStyle=`rgba(255,200,100,${alpha})`;
+    ctx.beginPath();ctx.arc(sx,sy,p.size*2,0,Math.PI*2);ctx.fill();
+  }
+}
+
+// 拾取物
+let pickups=[];
+function spawnPickups(){
+  pickups=[];
+  const types=['pistol','shotgun','smg','rocket','health','armor','money'];
+  for(let i=0;i<30;i++){
+    let attempts=0;
+    while(attempts<20){
+      const x=Math.random()*MAP_W*TILE;
+      const y=Math.random()*(MAP_H-12)*TILE;
+      const tx=Math.floor(x/TILE),ty=Math.floor(y/TILE);
+      if(tx>=0&&tx<MAP_W&&ty>=0&&ty<MAP_H&&
+         (gameMap[ty][tx]===TILE_TYPES.SIDEWALK||gameMap[ty][tx]===TILE_TYPES.PARKING||gameMap[ty][tx]===TILE_TYPES.GRASS)){
+        pickups.push({x,y,type:types[Math.floor(Math.random()*types.length)],
+          amount:types[Math.floor(Math.random()*types.length)]==='money'?Math.floor(Math.random()*500)+100:0});
+        break;
+      }
+      attempts++;
+    }
+  }
+}
+function checkPickups(){
+  pickups=pickups.filter(p=>{
+    const px=player.inCar?player.car.x:player.x;
+    const py=player.inCar?player.car.y:player.y;
+    if(Math.hypot(p.x-px,p.y-py)<30){
+      GameSFX.pickup();
+      if(p.type==='pistol'){
+        if(!player.weapons.includes('pistol'))player.weapons.push('pistol');
+        player.ammo.pistol+=30;player.weapon='pistol';showMessage('获得手枪！');
+      }else if(p.type==='shotgun'){
+        if(!player.weapons.includes('shotgun'))player.weapons.push('shotgun');
+        player.ammo.shotgun+=15;player.weapon='shotgun';showMessage('获得霰弹枪！');
+      }else if(p.type==='smg'){
+        if(!player.weapons.includes('smg'))player.weapons.push('smg');
+        player.ammo.smg+=60;player.weapon='smg';showMessage('获得冲锋枪！');
+      }else if(p.type==='rocket'){
+        if(!player.weapons.includes('rocket'))player.weapons.push('rocket');
+        player.ammo.rocket+=5;player.weapon='rocket';showMessage('获得火箭筒！');
+      }else if(p.type==='health'){
+        player.health=Math.min(100,player.health+25);showMessage('+25 生命');
+      }else if(p.type==='armor'){
+        player.armor=Math.min(100,player.armor+25);showMessage('+25 护甲');
+      }else if(p.type==='money'){
+        player.money+=p.amount;showMessage(`+$${p.amount}`);
+      }
+      updateHealthDisplay();updateWeaponDisplay();updateAmmoDisplay();updateMoneyDisplay();
+      return false;
+    }
+    return true;
+  });
+}
+function drawPickups(){
+  pickups.forEach(p=>{
+    const sx=p.x-camera.x;
+    const sy=p.y-camera.y;
+    const bob=Math.sin(Date.now()*0.005+p.x)*3;
+    ctx.save();
+    ctx.translate(sx,sy+bob);
+    const colors={pistol:'#ffd700',shotgun:'#ff6600',smg:'#00ff00',rocket:'#ff0000',health:'#ff6666',armor:'#6699ff',money:'#33ff66'};
+    const grad=ctx.createRadialGradient(0,0,0,0,0,20);
+    grad.addColorStop(0,colors[p.type]||'#fff');
+    grad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=grad;ctx.globalAlpha=0.4;
+    ctx.beginPath();ctx.arc(0,0,20,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+    ctx.fillStyle=colors[p.type]||'#fff';
+    if(p.type==='health'){ctx.fillRect(-3,-8,6,16);ctx.fillRect(-8,-3,16,6);}
+    else if(p.type==='armor'){ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(7,-4);ctx.lineTo(7,4);ctx.lineTo(0,9);ctx.lineTo(-7,4);ctx.lineTo(-7,-4);ctx.closePath();ctx.fill();}
+    else if(p.type==='money'){ctx.font='bold 14px Arial';ctx.textAlign='center';ctx.fillText('$',0,5);ctx.textAlign='left';}
+    else{ctx.fillStyle='#222';ctx.fillRect(-8,-2,16,4);ctx.fillStyle=colors[p.type];ctx.fillRect(-8,-2,16,2);}
+    ctx.restore();
+  });
+}
+
+// ============================================================
+// 罪恶都市主线任务（8个任务）
+// ============================================================
+let currentMission=-1,missionActive=false,missionKillCount=0,dialogEnded=false;
+const MISSIONS=[
+  {
+    name:'欢迎来到罪恶都市',
+    desc:'去大洋海滩的酒店见联系人桑尼',
+    trigger:{x:MAP_W*TILE*0.3,y:MAP_H*TILE*0.3},
+    dialog:[
+      {speaker:'汤米',text:'罪恶都市……阳光、沙滩、还有遍地的金钱。'},
+      {speaker:'汤米',text:'桑尼让我来这里做笔毒品交易，应该在海滩边的酒店。'},
+      {speaker:'桑尼',text:'汤米！你终于来了。交易在码头进行，跟我来。'}
+    ],
+    reward:{money:500}
+  },
+  {
+    name:'码头交易',
+    desc:'去码头完成交易，小心埋伏',
+    trigger:{x:MAP_W*TILE*0.15,y:MAP_H*TILE*0.4},
+    dialog:[
+      {speaker:'桑尼',text:'到了，买家应该马上就到。'},
+      {speaker:'汤米',text:'……不对劲。这是个陷阱！'},
+      {speaker:'神秘人',text:'桑尼，你的钱和货我们都要了！'},
+      {speaker:'汤米',text:'干掉他们！'}
+    ],
+    killTarget:5,
+    reward:{money:1000,weapon:'pistol'}
+  },
+  {
+    name:'寻找幕后黑手',
+    desc:'去市中心的酒吧找线人兰斯',
+    trigger:{x:MAP_W*TILE*0.5,y:MAP_H*TILE*0.3},
+    dialog:[
+      {speaker:'汤米',text:'桑尼死了，钱和货都被抢了。我要找出是谁干的。'},
+      {speaker:'兰斯',text:'汤米？我听说了码头的事。是迪亚兹帮干的，他们是这里最大的毒枭。'},
+      {speaker:'汤米',text:'迪亚兹……他住在哪？'},
+      {speaker:'兰斯',text:'海星岛的豪宅。但你现在还动不了他，先积累点实力吧。'}
+    ],
+    reward:{money:800}
+  },
+  {
+    name:'抢银行',
+    desc:'和兰斯一起抢银行，获取资金',
+    trigger:{x:MAP_W*TILE*0.7,y:MAP_H*TILE*0.35},
+    dialog:[
+      {speaker:'兰斯',text:'要搞迪亚兹，需要大量资金买武器。'},
+      {speaker:'汤米',text:'那就去抢银行吧。'},
+      {speaker:'兰斯',text:'哈哈！我就喜欢你这种风格。走吧！'},
+      {speaker:'汤米',text:'所有人趴下！这是抢劫！'}
+    ],
+    killTarget:8,
+    reward:{money:5000,weapon:'shotgun'}
+  },
+  {
+    name:'迪亚兹的豪宅',
+    desc:'攻打迪亚兹的豪宅，杀死迪亚兹',
+    trigger:{x:MAP_W*TILE*0.85,y:MAP_H*TILE*0.2},
+    dialog:[
+      {speaker:'汤米',text:'迪亚兹，你的末日到了！'},
+      {speaker:'迪亚兹',text:'你以为你能闯进我的豪宅？守卫们，干掉他！'},
+      {speaker:'兰斯',text:'汤米，我从侧翼包抄！你正面突破！'},
+      {speaker:'汤米',text:'迪亚兹，为桑尼偿命吧！'}
+    ],
+    killTarget:12,
+    reward:{money:10000,weapon:'smg'}
+  },
+  {
+    name:'接管帝国',
+    desc:'消灭迪亚兹帮的残余势力，接管3个据点',
+    visitTargets:[
+      {x:MAP_W*TILE*0.2,y:MAP_H*TILE*0.5},
+      {x:MAP_W*TILE*0.5,y:MAP_H*TILE*0.5},
+      {x:MAP_W*TILE*0.75,y:MAP_H*TILE*0.45}
+    ],
+    dialog:[
+      {speaker:'汤米',text:'迪亚兹死了，他的帝国现在是我的了。'},
+      {speaker:'兰斯',text:'但还有一些残余势力不肯投降。'},
+      {speaker:'汤米',text:'那就让他们看看，谁才是罪恶都市的新主人。'},
+      {speaker:'汤米',text:'去接管这三个据点！'}
+    ],
+    reward:{money:15000}
+  },
+  {
+    name:'兰斯的背叛',
+    desc:'兰斯背叛了你，去工厂解决他',
+    trigger:{x:MAP_W*TILE*0.1,y:MAP_H*TILE*0.6},
+    dialog:[
+      {speaker:'兰斯',text:'汤米，对不起。桑尼的哥哥给了我更好的条件。'},
+      {speaker:'汤米',text:'兰斯……你背叛了我？'},
+      {speaker:'兰斯',text:'这是生意，汤米。你应该懂的。'},
+      {speaker:'汤米',text:'不，兰斯。这是私人恩怨。'}
+    ],
+    killTarget:10,
+    reward:{money:20000,weapon:'rocket'}
+  },
+  {
+    name:'罪恶都市之王',
+    desc:'最终决战，消灭桑尼的哥哥，成为城市之王',
+    trigger:{x:MAP_W*TILE*0.5,y:MAP_H*TILE*0.15},
+    dialog:[
+      {speaker:'桑尼的哥哥',text:'汤米，你杀了我弟弟，还抢走了他的生意。'},
+      {speaker:'汤米',text:'你弟弟是个叛徒。而你，也一样。'},
+      {speaker:'桑尼的哥哥',text:'我的手下会把你剁成肉酱！'},
+      {speaker:'汤米',text:'来吧。从今天起，罪恶都市由我掌控！'}
+    ],
+    killTarget:15,
+    reward:{money:50000},
+    isFinal:true
+  }
+];
+
+function startDialog(dialogs,callback){
+  dialogQueue=dialogs;dialogIndex=0;dialogCallback=callback||null;
+  document.getElementById('dialogBox').style.display='block';
+  showDialogLine();
+}
+let dialogQueue=[],dialogIndex=0,dialogCallback=null;
+function showDialogLine(){
+  if(dialogIndex>=dialogQueue.length){endDialog();return;}
+  const line=dialogQueue[dialogIndex];
+  document.getElementById('dialogSpeaker').textContent=line.speaker;
+  document.getElementById('dialogText').textContent=line.text;
+  document.getElementById('dialogHintText').textContent=isTouch?'轻触屏幕':'按 E';
+}
+function advanceDialog(){dialogIndex++;showDialogLine();}
+function endDialog(){
+  document.getElementById('dialogBox').style.display='none';
+  if(dialogCallback){const cb=dialogCallback;dialogCallback=null;cb();}
+}
+document.getElementById('dialogBox').addEventListener('click',()=>{if(document.getElementById('dialogBox').style.display!=='none')advanceDialog();});
+
+function startMission(id){
+  if(id>=MISSIONS.length)return;
+  currentMission=id;missionActive=true;missionKillCount=0;
+  const m=MISSIONS[id];
+  document.getElementById('missionNoticeName').textContent=m.name;
+  document.getElementById('missionNotice').style.opacity='1';
+  setTimeout(()=>document.getElementById('missionNotice').style.opacity='0',2500);
+  document.getElementById('missionTitle').textContent=m.name;
+  document.getElementById('missionDesc').textContent=m.desc;
+  GameSFX.mission();
+  startDialog(m.dialog,()=>{
+    if(m.killTarget)showMessage(`目标：消灭 ${m.killTarget} 个敌人`);
+    else if(m.visitTargets)showMessage('前往地图上的绿色标记点');
+  });
+}
+function checkMissionKill(){
+  if(!missionActive)return;
+  const m=MISSIONS[currentMission];
+  if(m.killTarget&&missionKillCount>=m.killTarget){
+    completeMission();
+  }
+}
+function checkMissionVisit(){
+  if(!missionActive)return;
+  const m=MISSIONS[currentMission];
+  if(!m.visitTargets)return;
+  const px=player.inCar?player.car.x:player.x;
+  const py=player.inCar?player.car.y:player.y;
+  m.visitTargets.forEach((t,i)=>{
+    if(!t.visited&&Math.hypot(t.x-px,t.y-py)<80){
+      t.visited=true;
+      showMessage(`据点 ${i+1}/${m.visitTargets.length} 已接管`);
+      GameSFX.pickup();
+    }
+  });
+  if(m.visitTargets.every(t=>t.visited))completeMission();
+}
+function completeMission(){
+  if(!missionActive)return;
+  const m=MISSIONS[currentMission];
+  missionActive=false;
+  if(m.reward){
+    if(m.reward.money){player.money+=m.reward.money;showMessage(`任务完成：${m.name}！+$${m.reward.money}`);}
+    if(m.reward.weapon){
+      if(!player.weapons.includes(m.reward.weapon))player.weapons.push(m.reward.weapon);
+      player.ammo[m.reward.weapon]+=30;
+    }
+  }
+  GameSFX.mission();
+  updateMoneyDisplay();updateWeaponDisplay();
+  document.getElementById('missionTitle').textContent='';
+  document.getElementById('missionDesc').textContent='';
+  // 重置visitTargets
+  MISSIONS.forEach(mm=>{if(mm.visitTargets)mm.visitTargets.forEach(t=>t.visited=false);});
+  if(m.isFinal){
+    setTimeout(()=>gameWin(),2000);
+  }
+}
+
+function gameWin(){
+  gameRunning=false;
+  stopEngine();stopBGM();
+  document.getElementById('endTitle').textContent='罪恶都市之王！';
+  document.getElementById('endTitle').style.color='#ffd700';
+  document.getElementById('endStats').innerHTML=`
+    恭喜！你成为了罪恶都市的新主人！<br><br>
+    存活时间：${Math.floor(gameTime/60)}分${gameTime%60}秒<br>
+    击杀数：${kills}<br>
+    获得金钱：$${player.money}<br>
+    最高通缉：${maxWanted}星<br>
+    完成任务：${MISSIONS.length}/${MISSIONS.length}<br><br>
+    「这个城市，现在是我的了。」
+  `;
+  document.getElementById('endScreen').style.display='flex';
+}
+
+// ============================================================
+// HUD
+// ============================================================
+function updateHealthDisplay(){
+  document.getElementById('healthFill').style.width=player.health+'%';
+  document.querySelector('#healthFill + .stat-label').textContent=`生命 ${Math.floor(player.health)}`;
+  document.getElementById('armorFill').style.width=player.armor+'%';
+  document.querySelector('#armorFill + .stat-label').textContent=`护甲 ${Math.floor(player.armor)}`;
+}
+function updateWeaponDisplay(){
+  document.getElementById('weaponName').textContent=WEAPONS[player.weapon].name;
+  updateAmmoDisplay();
+}
+function updateAmmoDisplay(){
+  const el=document.getElementById('ammoCount');
+  if(player.weapon==='fist')el.innerHTML='∞';
+  else el.innerHTML=`${player.ammo[player.weapon]}<span> / ${WEAPONS[player.weapon].name}</span>`;
+}
+function updateMoneyDisplay(){document.getElementById('moneyDisplay').textContent=`$${player.money}`;}
+function showMessage(text){
+  const el=document.getElementById('gameMessage');
+  el.textContent=text;el.style.opacity='1';
+  setTimeout(()=>el.style.opacity='0',2000);
+}
+function showHint(text){
+  const el=document.getElementById('hintText');
+  if(text){el.textContent=text;el.style.display='block';}
+  else el.style.display='none';
+}
+
+// 小地图
+function drawMinimap(){
+  const mmW=160,mmH=160;
+  const scale=mmW/(MAP_W*TILE);
+  mmCtx.fillStyle='rgba(10,0,30,0.9)';
+  mmCtx.fillRect(0,0,mmW,mmH);
+  const step=4;
+  for(let y=0;y<MAP_H;y+=step){
+    for(let x=0;x<MAP_W;x+=step){
+      const t=gameMap[y][x];
+      if(t===TILE_TYPES.ROAD||t===TILE_TYPES.CROSSWALK)mmCtx.fillStyle='#444';
+      else if(t===TILE_TYPES.BUILDING)mmCtx.fillStyle='#666';
+      else if(t===TILE_TYPES.WATER)mmCtx.fillStyle='#003366';
+      else if(t===TILE_TYPES.BEACH||t===TILE_TYPES.SAND)mmCtx.fillStyle='#998866';
+      else if(t===TILE_TYPES.GRASS)mmCtx.fillStyle='#225522';
+      else continue;
+      mmCtx.fillRect(x*TILE*scale,y*TILE*scale,step*TILE*scale,step*TILE*scale);
+    }
+  }
+  // 任务标记
+  if(!missionActive&&currentMission+1<MISSIONS.length){
+    const m=MISSIONS[currentMission+1];
+    if(m.trigger){
+      mmCtx.fillStyle='#ff00ff';
+      const pulse=3+Math.sin(Date.now()*0.005)*2;
+      mmCtx.beginPath();mmCtx.arc(m.trigger.x*scale,m.trigger.y*scale,pulse,0,Math.PI*2);mmCtx.fill();
+    }
+  }
+  if(missionActive&&MISSIONS[currentMission].visitTargets){
+    MISSIONS[currentMission].visitTargets.forEach(t=>{
+      if(!t.visited){
+        mmCtx.fillStyle='#00ff00';
+        mmCtx.fillRect(t.x*scale-3,t.y*scale-3,6,6);
+      }
+    });
+  }
+  cars.forEach(c=>{
+    if(!c.active)return;
+    mmCtx.fillStyle=c.police?'#0000ff':'#ff6600';
+    mmCtx.fillRect(c.x*scale-2,c.y*scale-2,4,4);
+  });
+  cops.forEach(c=>{
+    if(!c.alive)return;
+    mmCtx.fillStyle='#00ffff';
+    mmCtx.fillRect(c.x*scale-3,c.y*scale-3,6,6);
+  });
+  pickups.forEach(p=>{
+    mmCtx.fillStyle='#ffd700';
+    mmCtx.fillRect(p.x*scale-1,p.y*scale-1,2,2);
+  });
+  const px=(player.inCar?player.car.x:player.x)*scale;
+  const py=(player.inCar?player.car.y:player.y)*scale;
+  const pa=player.inCar?player.car.angle:player.angle;
+  mmCtx.fillStyle='#00ff66';
+  mmCtx.beginPath();mmCtx.arc(px,py,4,0,Math.PI*2);mmCtx.fill();
+  mmCtx.strokeStyle='#00ff66';mmCtx.lineWidth=2;
+  mmCtx.beginPath();mmCtx.moveTo(px,py);mmCtx.lineTo(px+Math.cos(pa)*10,py+Math.sin(pa)*10);mmCtx.stroke();
+}
+
+// ============================================================
+// 输入
+// ============================================================
+const input={forward:false,back:false,left:false,right:false,fire:false,handbrake:false};
+document.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k==='w'||k==='arrowup')input.forward=true;
+  if(k==='s'||k==='arrowdown')input.back=true;
+  if(k==='a'||k==='arrowleft')input.left=true;
+  if(k==='d'||k==='arrowright')input.right=true;
+  if(k===' ')input.fire=true;
+  if(k==='shift')input.handbrake=true;
+  if(k==='q'&&!e.repeat)switchWeapon();
+  if(k==='f'&&!e.repeat)toggleCar();
+  if(k==='e'&&!e.repeat){
+    if(document.getElementById('dialogBox').style.display!=='none')advanceDialog();
+  }
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
+});
+document.addEventListener('keyup',e=>{
+  const k=e.key.toLowerCase();
+  if(k==='w'||k==='arrowup')input.forward=false;
+  if(k==='s'||k==='arrowdown')input.back=false;
+  if(k==='a'||k==='arrowleft')input.left=false;
+  if(k==='d'||k==='arrowright')input.right=false;
+  if(k===' ')input.fire=false;
+  if(k==='shift')input.handbrake=false;
+});
+function switchWeapon(){
+  if(player.weapons.length<2)return;
+  const idx=player.weapons.indexOf(player.weapon);
+  player.weapon=player.weapons[(idx+1)%player.weapons.length];
+  updateWeaponDisplay();
+  GameSFX.pickup();
+}
+canvas.addEventListener('mousemove',e=>{
+  if(!gameRunning||player.inCar||isTouch)return;
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left;
+  const my=e.clientY-rect.top;
+  const sx=player.x-camera.x;
+  const sy=player.y-camera.y;
+  player.angle=Math.atan2(my-sy,mx-sx);
+});
+canvas.addEventListener('mousedown',e=>{if(!gameRunning||isTouch)return;if(e.button===0)input.fire=true;});
+canvas.addEventListener('mouseup',e=>{if(!gameRunning||isTouch)return;if(e.button===0)input.fire=false;});
+
+// ============================================================
+// GB 掌机按键（虚拟摇杆 + 功能按钮）
+// ============================================================
+let touchFire=false,touchBrake=false;
+let joyActive=false,joyVec={x:0,y:0};
+const joystick=document.getElementById('joystick');
+const joystickKnob=document.getElementById('joystickKnob');
+function joyHandle(clientX,clientY){
+  const rect=joystick.getBoundingClientRect();
+  const cx=rect.left+rect.width/2;
+  const cy=rect.top+rect.height/2;
+  let dx=clientX-cx,dy=clientY-cy;
+  const maxR=rect.width/2-14;
+  const d=Math.hypot(dx,dy);
+  if(d>maxR){dx=dx/d*maxR;dy=dy/d*maxR;}
+  joystickKnob.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;
+  joyVec.x=dx/maxR;joyVec.y=dy/maxR;
+  // 映射到 input（阈值0.25）
+  input.forward=joyVec.y<-0.25;
+  input.back=joyVec.y>0.25;
+  input.left=joyVec.x<-0.25;
+  input.right=joyVec.x>0.25;
+}
+function joyEnd(){
+  joyActive=false;joyVec={x:0,y:0};
+  joystickKnob.style.transform='translate(-50%,-50%)';
+  input.forward=input.back=input.left=input.right=false;
+}
+// 触屏
+joystick.addEventListener('touchstart',e=>{e.preventDefault();joyActive=true;const t=e.touches[0];joyHandle(t.clientX,t.clientY);},{passive:false});
+joystick.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];joyHandle(t.clientX,t.clientY);},{passive:false});
+joystick.addEventListener('touchend',e=>{e.preventDefault();joyEnd();},{passive:false});
+joystick.addEventListener('touchcancel',e=>{e.preventDefault();joyEnd();},{passive:false});
+// 鼠标（电脑端也可拖动摇杆）
+let joyMouseDown=false;
+joystick.addEventListener('mousedown',e=>{e.preventDefault();joyMouseDown=true;joyActive=true;joyHandle(e.clientX,e.clientY);});
+window.addEventListener('mousemove',e=>{if(joyMouseDown)joyHandle(e.clientX,e.clientY);});
+window.addEventListener('mouseup',()=>{if(joyMouseDown){joyMouseDown=false;joyEnd();}});
+
+// 射击按钮（按住连续射击）
+const btnShoot=document.getElementById('btnShoot');
+const shootPress=e=>{e.preventDefault();touchFire=true;};
+const shootRelease=e=>{e.preventDefault();touchFire=false;};
+btnShoot.addEventListener('touchstart',shootPress,{passive:false});
+btnShoot.addEventListener('touchend',shootRelease,{passive:false});
+btnShoot.addEventListener('touchcancel',shootRelease,{passive:false});
+btnShoot.addEventListener('mousedown',e=>{e.preventDefault();touchFire=true;});
+btnShoot.addEventListener('mouseup',e=>{e.preventDefault();touchFire=false;});
+btnShoot.addEventListener('mouseleave',()=>{touchFire=false;});
+
+// 上下车按钮
+document.getElementById('btnEnter').addEventListener('click',e=>{e.preventDefault();if(gameRunning)toggleCar();});
+// 切换武器按钮
+document.getElementById('btnWeapon').addEventListener('click',e=>{e.preventDefault();if(gameRunning)switchWeapon();});
+// 手刹按钮
+const btnBrake=document.getElementById('btnBrake');
+const brakePress=e=>{e.preventDefault();touchBrake=true;};
+const brakeRelease=e=>{e.preventDefault();touchBrake=false;};
+btnBrake.addEventListener('touchstart',brakePress,{passive:false});
+btnBrake.addEventListener('touchend',brakeRelease,{passive:false});
+btnBrake.addEventListener('touchcancel',brakeRelease,{passive:false});
+btnBrake.addEventListener('mousedown',e=>{e.preventDefault();touchBrake=true;});
+btnBrake.addEventListener('mouseup',e=>{e.preventDefault();touchBrake=false;});
+btnBrake.addEventListener('mouseleave',()=>{touchBrake=false;});
+
+// ============================================================
+// 玩家更新
+// ============================================================
+let gameTime=0,kills=0,maxWanted=0;
+function updatePlayer(){
+  if(player.fireCooldown>0)player.fireCooldown--;
+  if(player.inCar&&player.car&&player.car.active){
+    const car=player.car;
+    if(input.forward)car.speed=Math.min(car.maxSpeed,car.speed+car.accel);
+    else if(input.back)car.speed=Math.max(-car.maxSpeed*0.5,car.speed-car.accel*0.7);
+    if(input.left&&Math.abs(car.speed)>0.1)car.angle-=car.handling*(car.speed>0?1:-1);
+    if(input.right&&Math.abs(car.speed)>0.1)car.angle+=car.handling*(car.speed>0?1:-1);
+    if(input.handbrake||touchBrake){car.speed*=0.9;if(Math.abs(car.speed)>2)CarSFX.brake();}
+    updateCar(car);
+    updateEngine(car.speed);
+    player.x=car.x;player.y=car.y;player.angle=car.angle;
+    pedestrians.forEach(p=>{
+      if(!p.alive)return;
+      if(Math.hypot(p.x-car.x,p.y-car.y)<car.length/2+10&&Math.abs(car.speed)>1){
+        p.alive=false;spawnParticles(p.x,p.y,'blood',10);increaseWanted(1);kills++;
+        if(missionActive&&MISSIONS[currentMission].killTarget){missionKillCount++;checkMissionKill();}
+      }
+    });
+    cops.forEach(c=>{
+      if(!c.alive||c.inCar)return;
+      if(Math.hypot(c.x-car.x,c.y-car.y)<car.length/2+10&&Math.abs(car.speed)>1){
+        c.health-=30;
+        if(c.health<=0){c.alive=false;increaseWanted(1);kills++;
+          if(missionActive&&MISSIONS[currentMission].killTarget){missionKillCount++;checkMissionKill();}}
+      }
+    });
+    if(input.fire||touchFire)playerFire();
+  }else{
+    let mx=0,my=0;
+    if(input.forward)my-=1;
+    if(input.back)my+=1;
+    if(input.left)mx-=1;
+    if(input.right)mx+=1;
+    const len=Math.hypot(mx,my);
+    if(len>0){
+      mx/=len;my/=len;
+      const speed=2.5;
+      const nx=player.x+mx*speed;
+      const ny=player.y+my*speed;
+      if(!isSolid(nx,player.y))player.x=nx;
+      if(!isSolid(player.x,ny))player.y=ny;
+      if(isTouch||!(input.forward||input.back))player.angle=Math.atan2(my,mx);
+    }
+    if(input.fire||touchFire)playerFire();
+  }
+  // 任务触发检查
+  if(!missionActive&&currentMission+1<MISSIONS.length){
+    const m=MISSIONS[currentMission+1];
+    if(m.trigger){
+      const px=player.inCar?player.car.x:player.x;
+      const py=player.inCar?player.car.y:player.y;
+      if(Math.hypot(m.trigger.x-px,m.trigger.y-py)<80){
+        startMission(currentMission+1);
+      }
+    }
+  }
+  checkMissionVisit();
+}
+
+function damagePlayer(dmg){
+  if(player.armor>0){
+    const absorbed=Math.min(player.armor,dmg*0.5);
+    player.armor-=absorbed;dmg-=absorbed;
+  }
+  player.health-=dmg;
+  GameSFX.hurt();
+  const flash=document.getElementById('damageFlash');
+  flash.style.opacity='1';
+  setTimeout(()=>flash.style.opacity='0',100);
+  updateHealthDisplay();
+  if(player.health<=0){player.health=0;playerDie();}
+}
+function playerDie(){
+  player.alive=false;
+  stopEngine();stopBGM();
+  GameSFX.death();
+  document.getElementById('endTitle').textContent='你死了';
+  document.getElementById('endTitle').style.color='#ff0066';
+  document.getElementById('endStats').innerHTML=`
+    存活时间：${Math.floor(gameTime/60)}分${gameTime%60}秒<br>
+    击杀数：${kills}<br>
+    获得金钱：$${player.money}<br>
+    最高通缉：${maxWanted}星<br>
+    任务进度：${currentMission+1}/${MISSIONS.length}
+  `;
+  document.getElementById('endScreen').style.display='flex';
+  gameRunning=false;
+}
+
+// ============================================================
+// 游戏主循环
+// ============================================================
+let gameRunning=false;
+function gameLoop(){
+  if(gameRunning&&player.alive){
+    gameTime++;
+    updatePlayer();
+    cars.forEach(c=>{if(!c.active||c.isPlayerCar)return;
+      if(Math.random()<0.02)c.angle+=(Math.random()-0.5)*0.3;
+      c.speed=Math.min(c.maxSpeed*0.5,c.speed+c.accel*0.3);
+      updateCar(c);
+    });
+    pedestrians.forEach(updatePedestrian);
+    cops.forEach(updateCop);
+    updateBullets();
+    updateParticles();
+    updateWanted();
+    checkPickups();
+    updateCamera();
+    if(player.wanted>maxWanted)maxWanted=player.wanted;
+    if(!player.inCar){
+      let nearCar=false;
+      for(const car of cars){if(!car.active)continue;
+        if(Math.hypot(car.x-player.x,car.y-player.y)<60){nearCar=true;break;}}
+      if(nearCar)showHint(isTouch?'点击右侧"上下车"按钮上车':'按 F 上车');
+      else showHint(null);
+    }else{
+      showHint(isTouch?'点击右侧"上下车"按钮下车 | 点击射击': '按 F 下车 | 空格射击');
+    }
+  }
+  if(gameRunning){
+    render();
+    drawPickups();
+    drawMinimap();
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+// 游戏控制
+// ============================================================
+function startGame(){
+  initAudio();
+  generateCity();
+  let spawnX=MAP_W*TILE*0.5,spawnY=MAP_H*TILE*0.4;
+  for(let i=0;i<100;i++){
+    const x=Math.random()*MAP_W*TILE,y=Math.random()*(MAP_H-15)*TILE;
+    if(isRoad(x,y)){spawnX=x;spawnY=y;break;}
+  }
+  player={x:spawnX,y:spawnY,angle:0,speed:0,health:100,armor:0,money:0,weapon:'fist',ammo:{fist:Infinity,pistol:0,shotgun:0,smg:0,rocket:0},weapons:['fist'],wanted:0,inCar:false,car:null,fireCooldown:0,alive:true};
+  cars=[];cops=[];pedestrians=[];bullets=[];particles=[];pickups=[];
+  currentMission=-1;missionActive=false;missionKillCount=0;dialogEnded=false;
+  gameTime=0;kills=0;maxWanted=0;
+  spawnCars();spawnPedestrians();spawnPickups();
+  gameRunning=true;
+  document.getElementById('titleScreen').style.display='none';
+  document.getElementById('endScreen').style.display='none';
+  document.getElementById('hud').style.display='block';
+  updateHealthDisplay();updateWeaponDisplay();updateMoneyDisplay();updateWantedDisplay();
+  startBGM();
+  showMessage('欢迎来到罪恶都市！');
+  setTimeout(()=>{
+    startDialog([
+      {speaker:'汤米',text:'罪恶都市……阳光、沙滩、还有遍地的金钱。'},
+      {speaker:'汤米',text:'桑尼让我来这里做笔交易。先去酒店找他吧。'},
+      {speaker:'汤米',text:'地图上的粉色标记是任务地点，过去看看。'}
+    ]);
+  },1000);
+}
+function restartGame(){stopEngine();stopBGM();startGame();}
+function backToTitle(){
+  gameRunning=false;stopEngine();stopBGM();
+  document.getElementById('endScreen').style.display='none';
+  document.getElementById('hud').style.display='none';
+  document.getElementById('titleScreen').style.display='flex';
+}
+function showHelp(){
+  alert('【罪恶都市 - Vice City Nights】\n\n主线剧情：\n  1986年，你是汤米，刚从监狱出来被派到罪恶都市。\n  交易被伏击，联系人被杀，你要找出幕后黑手，\n  逐步复仇，最终成为罪恶都市之王！\n  共8个主线任务，跟随地图上的粉色标记触发。\n\n【GB掌机操作】\n  虚拟摇杆：移动 / 开车转向、油门\n  射击键：按住开火（红）\n  武器键：切换武器（蓝）\n  手刹键：驾车手刹（黄）\n  上车键：进入/离开载具（绿）\n  START：开始游戏  SELECT：操作说明\n\n【电脑键盘鼠标】\n  WASD/方向键：移动\n  鼠标：瞄准（步行时）\n  空格/鼠标左键：射击\n  Q：切换武器  F：上下车  Shift：手刹\n\n游戏特色：\n  80年代迈阿密风格、霓虹招牌、棕榈树、海滩\n  更真实的引擎声和枪声、80年代合成器BGM\n  5种武器、5星通缉系统、可驾驶车辆\n\n目标：完成8个主线任务，成为罪恶都市之王！');
+}
+
+gameLoop();
+</script>
+</body>
+</html>

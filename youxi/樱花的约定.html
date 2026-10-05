@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>樱花落下的季节 - Galgame</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei","PingFang SC",sans-serif;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;}
+
+#game{position:relative;width:100vw;height:100vh;overflow:hidden;}
+
+/* ===== 背景层 ===== */
+#bg{position:absolute;top:0;left:0;width:100%;height:100%;transition:background 1s ease;z-index:1;}
+.bg-title{background:linear-gradient(180deg,#1a1a3e 0%,#2d1b4e 50%,#4a2c5a 100%);}
+.bg-classroom{background:linear-gradient(180deg,#87ceeb 0%,#b0e0e6 40%,#f5deb3 70%,#deb887 100%);}
+.bg-library{background:linear-gradient(180deg,#3d2817 0%,#5c3d2e 40%,#4a2f1f 100%);}
+.bg-rooftop{background:linear-gradient(180deg,#ff9a8b 0%,#ff6a88 40%,#ff99ac 70%,#ffc3a0 100%);}
+.bg-sakura{background:linear-gradient(180deg,#ffd1dc 0%,#ffb6c1 40%,#ffc0cb 70%,#fff0f5 100%);}
+.bg-night{background:linear-gradient(180deg,#0a0a2e 0%,#1a1a4e 50%,#2d1b4e 100%);}
+.bg-ending-good{background:linear-gradient(180deg,#ffd700 0%,#ffb347 50%,#ff8c69 100%);}
+.bg-ending-bad{background:linear-gradient(180deg,#2c2c2c 0%,#1a1a1a 50%,#0d0d0d 100%);}
+
+/* 樱花飘落 */
+.petal{position:absolute;width:10px;height:10px;background:#ffb6c1;border-radius:0 100% 0 100%;opacity:0.7;z-index:2;pointer-events:none;animation:fall linear infinite;}
+@keyframes fall{
+  0%{transform:translateY(-10vh) rotate(0deg);opacity:0;}
+  10%{opacity:0.8;}
+  90%{opacity:0.8;}
+  100%{transform:translateY(110vh) rotate(720deg);opacity:0;}
+}
+
+/* ===== 角色立绘 ===== */
+#character{position:absolute;bottom:30%;left:50%;transform:translateX(-50%);z-index:3;transition:opacity 0.5s, transform 0.5s;opacity:0;}
+#character.show{opacity:1;}
+#character.left{transform:translateX(-80%);}
+#character.right{transform:translateX(-20%);}
+.char-body{position:relative;width:180px;height:320px;}
+
+/* 角色通用 */
+.char-head{position:absolute;top:0;left:50%;transform:translateX(-50%);width:90px;height:100px;border-radius:50% 50% 45% 45%;}
+.char-hair{position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:100px;height:70px;border-radius:50% 50% 30% 30%;}
+.char-eye{position:absolute;top:45px;width:14px;height:18px;border-radius:50%;background:#222;}
+.char-eye.left{left:28px;}
+.char-eye.right{right:28px;}
+.char-mouth{position:absolute;top:72px;left:50%;transform:translateX(-50%);width:20px;height:8px;border-bottom:3px solid #c44;border-radius:0 0 50% 50%;}
+.char-body-main{position:absolute;top:95px;left:50%;transform:translateX(-50%);width:110px;height:140px;border-radius:20px 20px 10px 10px;}
+.char-arm{position:absolute;top:105px;width:30px;height:110px;border-radius:15px;}
+.char-arm.left{left:20px;transform:rotate(10deg);}
+.char-arm.right{right:20px;transform:rotate(-10deg);}
+.char-leg{position:absolute;top:225px;width:35px;height:80px;border-radius:10px;}
+.char-leg.left{left:50px;}
+.char-leg.right{right:50px;}
+
+/* 白雪 - 银发紫瞳 */
+.shirayuki .char-head{background:#f5e6d3;}
+.shirayuki .char-hair{background:linear-gradient(180deg,#e8e8f0,#c8c8d8);}
+.shirayuki .char-eye{background:#6a4c93;box-shadow:0 0 4px #9b7ec4;}
+.shirayuki .char-body-main{background:linear-gradient(180deg,#f0e6f5,#d8c8e0);}
+.shirayuki .char-arm{background:#f0e6f5;}
+.shirayuki .char-leg{background:#4a3d5c;}
+.shirayuki .char-ribbon{position:absolute;top:55px;left:50%;transform:translateX(-50%);width:30px;height:15px;background:#9b7ec4;border-radius:0 0 50% 50%;}
+
+/* 向阳 - 橙发绿瞳 */
+.hinata .char-head{background:#ffe4c4;}
+.hinata .char-hair{background:linear-gradient(180deg,#ff8c42,#ff6b35);}
+.hinata .char-eye{background:#2d8659;box-shadow:0 0 4px #5cb85c;}
+.hinata .char-body-main{background:linear-gradient(180deg,#fff5e6,#ffe4b5);}
+.hinata .char-arm{background:#fff5e6;}
+.hinata .char-leg{background:#8b4513;}
+.hinata .char-ponytail{position:absolute;top:20px;right:-15px;width:35px;height:80px;background:linear-gradient(180deg,#ff8c42,#ff6b35);border-radius:0 50% 50% 0;transform:rotate(15deg);}
+
+/* ===== 对话框 ===== */
+#dialogBox{position:absolute;bottom:0;left:0;width:100%;height:32%;background:linear-gradient(180deg,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.92) 100%);border-top:2px solid rgba(255,255,255,0.3);z-index:10;padding:15px 20px;display:flex;flex-direction:column;}
+#speakerName{color:#ffd700;font-size:20px;font-weight:bold;margin-bottom:8px;text-shadow:0 0 8px rgba(255,215,0,0.5);min-height:28px;}
+#dialogText{color:#fff;font-size:17px;line-height:1.7;flex:1;overflow:hidden;}
+#dialogText .cursor{display:inline-block;width:2px;height:18px;background:#fff;animation:blink 0.8s infinite;vertical-align:middle;margin-left:2px;}
+@keyframes blink{0%,50%{opacity:1;}51%,100%{opacity:0;}}
+#continueHint{position:absolute;bottom:10px;right:20px;color:#aaa;font-size:14px;animation:bounce 1s infinite;}
+@keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+
+/* ===== 选项 ===== */
+#choices{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;display:flex;flex-direction:column;gap:15px;width:80%;max-width:500px;}
+.choice-btn{padding:18px 25px;background:linear-gradient(135deg,rgba(100,60,150,0.9),rgba(60,40,100,0.9));border:2px solid rgba(255,215,0,0.5);border-radius:12px;color:#fff;font-size:17px;cursor:pointer;transition:all 0.2s;text-align:left;}
+.choice-btn:active,.choice-btn:hover{background:linear-gradient(135deg,rgba(150,100,200,0.95),rgba(100,70,150,0.95));border-color:#ffd700;transform:scale(1.02);}
+
+/* ===== 标题界面 ===== */
+#titleScreen{position:absolute;top:0;left:0;width:100%;height:100%;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#1a1a3e 0%,#2d1b4e 50%,#4a2c5a 100%);}
+#titleScreen h1{font-size:42px;color:#ffd700;text-shadow:0 0 20px rgba(255,215,0,0.6),0 4px 8px rgba(0,0,0,0.8);margin-bottom:10px;letter-spacing:4px;}
+#titleScreen .subtitle{font-size:18px;color:#ccc;margin-bottom:60px;letter-spacing:2px;}
+.title-btn{width:220px;padding:16px;margin:8px;background:linear-gradient(135deg,rgba(100,60,150,0.8),rgba(60,40,100,0.8));border:2px solid rgba(255,215,0,0.4);border-radius:10px;color:#fff;font-size:18px;cursor:pointer;transition:all 0.2s;}
+.title-btn:active,.title-btn:hover{background:linear-gradient(135deg,rgba(150,100,200,0.9),rgba(100,70,150,0.9));border-color:#ffd700;}
+
+/* ===== 存档界面 ===== */
+#saveScreen{position:absolute;top:0;left:0;width:100%;height:100%;z-index:40;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+#saveScreen h2{color:#ffd700;font-size:28px;margin-bottom:25px;}
+.save-slot{width:90%;max-width:500px;padding:15px 20px;margin:6px 0;background:rgba(50,40,80,0.8);border:2px solid rgba(255,255,255,0.2);border-radius:10px;color:#fff;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all 0.2s;}
+.save-slot:active,.save-slot:hover{border-color:#ffd700;background:rgba(80,60,120,0.9);}
+.save-slot .slot-info{font-size:14px;color:#aaa;}
+.save-slot .slot-empty{color:#666;font-style:italic;}
+.close-btn{margin-top:20px;padding:12px 40px;background:rgba(150,50,50,0.8);border:2px solid rgba(255,100,100,0.5);border-radius:8px;color:#fff;font-size:16px;cursor:pointer;}
+
+/* ===== 顶部菜单按钮 ===== */
+#topMenu{position:absolute;top:10px;right:10px;z-index:15;display:flex;gap:8px;}
+.menu-btn{width:44px;height:44px;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.3);border-radius:8px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.menu-btn:active{background:rgba(255,255,255,0.2);}
+
+/* ===== 结局画面 ===== */
+#endingScreen{position:absolute;top:0;left:0;width:100%;height:100%;z-index:35;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;}
+#endingScreen h2{font-size:36px;color:#ffd700;text-shadow:0 0 15px rgba(255,215,0,0.6);margin-bottom:20px;}
+#endingScreen p{font-size:18px;color:#fff;line-height:1.9;margin-bottom:30px;max-width:600px;}
+
+/* 好感度提示 */
+#affinityToast{position:absolute;top:80px;left:50%;transform:translateX(-50%);padding:10px 25px;background:rgba(0,0,0,0.8);border:1px solid #ffd700;border-radius:20px;color:#ffd700;font-size:16px;z-index:25;opacity:0;transition:opacity 0.3s;pointer-events:none;}
+#affinityToast.show{opacity:1;}
+
+/* 电脑端适配 */
+@media(min-width:768px){
+  #dialogBox{height:28%;padding:20px 40px;}
+  #speakerName{font-size:24px;}
+  #dialogText{font-size:20px;}
+  .char-body{transform:scale(1.2);transform-origin:bottom center;}
+}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 背景 -->
+  <div id="bg" class="bg-title"></div>
+
+  <!-- 樱花容器 -->
+  <div id="petals"></div>
+
+  <!-- 角色立绘 -->
+  <div id="character">
+    <div class="char-body" id="charBody">
+      <div class="char-hair"></div>
+      <div class="char-head"></div>
+      <div class="char-eye left"></div>
+      <div class="char-eye right"></div>
+      <div class="char-mouth"></div>
+      <div class="char-body-main"></div>
+      <div class="char-arm left"></div>
+      <div class="char-arm right"></div>
+      <div class="char-leg left"></div>
+      <div class="char-leg right"></div>
+    </div>
+  </div>
+
+  <!-- 对话框 -->
+  <div id="dialogBox" style="display:none;">
+    <div id="speakerName"></div>
+    <div id="dialogText"></div>
+    <div id="continueHint" style="display:none;">▼</div>
+  </div>
+
+  <!-- 选项 -->
+  <div id="choices" style="display:none;"></div>
+
+  <!-- 顶部菜单 -->
+  <div id="topMenu" style="display:none;">
+    <button class="menu-btn" onclick="toggleAuto()" id="autoBtn" title="自动">A</button>
+    <button class="menu-btn" onclick="toggleSkip()" id="skipBtn" title="快进">»</button>
+    <button class="menu-btn" onclick="showSave('save')" title="存档">💾</button>
+    <button class="menu-btn" onclick="showSave('load')" title="读档">📂</button>
+    <button class="menu-btn" onclick="backToTitle()" title="标题">🏠</button>
+  </div>
+
+  <!-- 好感度提示 -->
+  <div id="affinityToast"></div>
+
+  <!-- 标题界面 -->
+  <div id="titleScreen">
+    <h1>樱花落下的季节</h1>
+    <div class="subtitle">～ 转学生的青春物语 ～</div>
+    <button class="title-btn" onclick="startNewGame()">开始游戏</button>
+    <button class="title-btn" onclick="showSave('load')">继续游戏</button>
+    <button class="title-btn" onclick="showAbout()">关于</button>
+  </div>
+
+  <!-- 存档界面 -->
+  <div id="saveScreen" style="display:none;">
+    <h2 id="saveTitle">存档</h2>
+    <div id="saveSlots"></div>
+    <button class="close-btn" onclick="hideSave()">返回</button>
+  </div>
+
+  <!-- 结局画面 -->
+  <div id="endingScreen" style="display:none;"></div>
+</div>
+
+<script>
+// ============================================================
+// 剧情数据
+// ============================================================
+const story = {
+  // 序章
+  start: [
+    {bg:'bg-classroom', char:null, name:'', text:'四月，樱花盛开的季节。我作为转学生，踏入了这所陌生的高中。'},
+    {bg:'bg-classroom', char:null, name:'', text:'教室里热闹的交谈声在我推开门的瞬间安静了下来。几十双眼睛齐刷刷地看向我。'},
+    {bg:'bg-classroom', char:null, name:'班主任', text:'同学们安静一下，这位是从今天起转入我们班的新同学。来，做个自我介绍吧。'},
+    {bg:'bg-classroom', char:null, name:'', text:'我深吸一口气，走上讲台。'},
+    {bg:'bg-classroom', char:null, name:'我', text:'大家好，我叫林辰，从今天起请多关照。'},
+    {bg:'bg-classroom', char:null, name:'', text:'教室里响起稀稀拉拉的掌声。我扫视着教室，寻找空座位。'},
+    {bg:'bg-classroom', char:null, name:'班主任', text:'林辰同学，你就坐靠窗那个空位吧。'},
+    {bg:'bg-classroom', char:null, name:'', text:'我走向靠窗的座位，放下书包。旁边的女生正低头看着一本书，似乎对周围的一切毫不在意。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'', text:'她有着一头银白色的长发，在阳光下泛着淡淡的光泽。紫色的眼眸专注地落在书页上，仿佛整个世界只剩下她和那本书。'},
+    {bg:'bg-classroom', char:null, name:'', text:'就在这时，教室后门被猛地推开。'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'向阳', text:'抱歉抱歉！我迟到了！'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'', text:'一个橙色短发的女生气喘吁吁地跑进来，脸上带着灿烂的笑容。她的马尾辫在身后甩动，整个人像一束阳光。'},
+    {bg:'bg-classroom', char:null, name:'班主任', text:'向阳！这已经是这个月第三次了！'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'向阳', text:'嘿嘿，下次一定不会了！'},
+    {bg:'bg-classroom', char:null, name:'', text:'她吐了吐舌头，跑到自己的座位上。正好坐在我的斜后方。'},
+    {bg:'bg-classroom', char:null, name:'', text:'就这样，我的转学生活开始了。而我还不知道，这两个人将会彻底改变我的高中生活……'},
+    {choice:true, options:[
+      {text:'主动和旁边的银发女生搭话', next:'talk_shirayuki', affinity:{shirayuki:5}},
+      {text:'和后面的活泼女生打招呼', next:'talk_hinata', affinity:{hinata:5}},
+      {text:'先安静地熟悉环境', next:'chapter1', affinity:{}}
+    ]}
+  ],
+
+  // 和白雪搭话
+  talk_shirayuki: [
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'我', text:'（那个……她看的是什么书呢？）'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'我', text:'你好，我叫林辰。你在看什么书？'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'……《银河铁道之夜》。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'', text:'她抬起头，紫色的眼睛平静地看着我。声音很轻，像风吹过书页。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'你也喜欢读书吗？'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'我', text:'嗯，偶尔会看一些。宫泽贤治的作品我也很喜欢。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'……这样啊。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'', text:'她的嘴角微微上扬，那是一个几乎难以察觉的微笑。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'我叫白雪。如果以后想聊书的话……可以来找我。'},
+    {bg:'bg-classroom', char:null, name:'', text:'说完，她又低下头继续看书。但我注意到，她翻页的速度似乎变慢了。'},
+    {next:'chapter1'}
+  ],
+
+  // 和向阳搭话
+  talk_hinata: [
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'我', text:'（那个女生看起来很开朗的样子……）'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'我', text:'你好，我是新转来的林辰。'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'向阳', text:'哦！新同学！你好你好！'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'', text:'她猛地转过身，眼睛亮晶晶地看着我，笑容比阳光还要耀眼。'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'向阳', text:'我叫向阳！运动部的！你以前的学校有没有参加什么社团？'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'我', text:'我……没怎么参加社团活动。'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'向阳', text:'那太可惜了！运动超级好玩的！要不要来我们运动部体验一下？'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'我', text:'这个……我考虑一下。'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'向阳', text:'一言为定！我会等你的！'},
+    {bg:'bg-classroom', char:null, name:'', text:'她用力拍了拍我的肩膀，力气大得让我差点从椅子上滑下去。但她的笑容真的很有感染力，我忍不住也笑了。'},
+    {next:'chapter1'}
+  ],
+
+  // 第一章
+  chapter1: [
+    {bg:'bg-classroom', char:null, name:'', text:'一周过去了，我渐渐习惯了新学校的生活。'},
+    {bg:'bg-classroom', char:null, name:'', text:'白雪总是一个人安静地看书，向阳则每天都充满活力地跑来跑去。'},
+    {bg:'bg-classroom', char:null, name:'', text:'这天放学后，我正在整理书包，教室里只剩下我一个人。'},
+    {bg:'bg-library', char:null, name:'', text:'我决定去图书馆看看。推开图书馆的门，安静的气息扑面而来。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'', text:'在角落的座位上，我看到了一个熟悉的身影。白雪正捧着一本书，夕阳透过窗户洒在她银白色的头发上，像镀了一层金。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'', text:'她似乎察觉到了我的目光，抬起头来。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'……林辰？你也来图书馆？'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'我', text:'嗯，想找几本书看看。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'……要坐这里吗？'},
+    {bg:'bg-library', char:null, name:'', text:'她指了指对面的座位。我点点头，坐了下来。'},
+    {bg:'bg-library', char:null, name:'', text:'我们各自看着书，偶尔交谈几句。时间在安静中缓缓流逝。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'林辰……你有没有觉得，书里的世界比现实更美好？'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'我', text:'为什么这么说？'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'因为……在书里，所有的相遇和离别都有意义。而现实中，很多事情是没有答案的。'},
+    {bg:'bg-library', char:null, name:'', text:'她的声音很轻，带着一丝我无法理解的忧伤。'},
+    {choice:true, options:[
+      {text:'「也许现实中的相遇，也有它的意义。」', next:'ch1_comfort', affinity:{shirayuki:10}},
+      {text:'「我不太懂这些，不过……你可以和我说说。」', next:'ch1_listen', affinity:{shirayuki:8}},
+      {text:'沉默不语', next:'ch1_silent', affinity:{}}
+    ]}
+  ],
+
+  ch1_comfort: [
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'……意义吗？'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'', text:'她看着我，紫色的眼眸里闪过一丝光芒。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'你这个人……说的话很奇怪。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'我', text:'奇怪吗？'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'嗯。但是……不讨厌。'},
+    {bg:'bg-library', char:null, name:'', text:'她低下头，耳尖微微泛红。我第一次看到她这样的表情。'},
+    {next:'chapter2'}
+  ],
+
+  ch1_listen: [
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'……你愿意听吗？'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'我', text:'当然。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'其实……我以前有一个很要好的朋友。但是后来她转学了，我们就渐渐失去了联系。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'从那以后，我就不太敢和别人走得太近。因为害怕……再次经历离别。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'我', text:'白雪……'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'抱歉，和你说这些奇怪的话。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'我', text:'不，谢谢你愿意告诉我。我不会突然消失的。'},
+    {bg:'bg-library', char:null, name:'', text:'她抬起头，眼里似乎有什么在闪烁。'},
+    {next:'chapter2'}
+  ],
+
+  ch1_silent: [
+    {bg:'bg-library', char:null, name:'', text:'我没有说话，只是静静地看着她。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'……算了，当我没说吧。'},
+    {bg:'bg-library', char:null, name:'', text:'她低下头，继续看书。但我总觉得，她翻页的手指在微微颤抖。'},
+    {next:'chapter2'}
+  ],
+
+  // 第二章
+  chapter2: [
+    {bg:'bg-classroom', char:null, name:'', text:'又过了几天，这天放学后，我被一阵喧闹声吸引到了操场。'},
+    {bg:'bg-rooftop', char:null, name:'', text:'操场上，向阳正在跑步。她的速度很快，橙色的身影在跑道上飞驰，像一团燃烧的火焰。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'', text:'她似乎注意到了我，猛地停下来，朝我挥手。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'林辰！你怎么来了！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'我', text:'路过看到你在跑步，就停下来看看。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'嘿嘿，怎么样？我跑得很快吧！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'我', text:'嗯，非常快。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'对了！你之前说要考虑来运动部的，考虑得怎么样了？'},
+    {bg:'bg-rooftop', char:null, name:'', text:'她期待地看着我，眼睛里闪着光。'},
+    {choice:true, options:[
+      {text:'「好，我试试。」', next:'ch2_join', affinity:{hinata:10}},
+      {text:'「我可以来看看，但不一定能坚持。」', next:'ch2_observe', affinity:{hinata:5}},
+      {text:'「抱歉，我还是不太适合运动。」', next:'ch2_decline', affinity:{}}
+    ]}
+  ],
+
+  ch2_join: [
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'真的吗！太好了！！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'', text:'她高兴得跳了起来，然后一把抓住我的手。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'走走走！我带你去见部长！从今天起你就是运动部的一员了！'},
+    {bg:'bg-rooftop', char:null, name:'', text:'她的手很温暖，力气也很大。我被她拉着跑向体育馆，心里却莫名地觉得很开心。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'对了林辰，你知道吗？我从小就喜欢跑步。因为跑步的时候，所有烦恼都会被风吹走！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'我', text:'这样啊。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'所以以后你有不开心的事，就来找我跑步！保证把烦恼都跑掉！'},
+    {bg:'bg-rooftop', char:null, name:'', text:'她回头朝我笑，那个笑容比夕阳还要灿烂。'},
+    {next:'chapter3'}
+  ],
+
+  ch2_observe: [
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'没关系没关系！先来体验一下嘛！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'', text:'她拉着我去了运动场，让我试跑了一圈。虽然跑得气喘吁吁，但她一直在旁边为我加油。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'不错不错！比我想象的好多了！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'我', text:'你这是在安慰我吧。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'才不是！我说的是实话！运动这种事，开心最重要！'},
+    {bg:'bg-rooftop', char:null, name:'', text:'看着她认真的表情，我忍不住笑了。'},
+    {next:'chapter3'}
+  ],
+
+  ch2_decline: [
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'这样啊……好吧。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'', text:'她的笑容有些黯淡，但很快又恢复了元气。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'没关系！每个人都有自己喜欢的事情嘛！不过如果你改变主意了，随时来找我！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'我', text:'嗯，谢谢。'},
+    {bg:'bg-rooftop', char:null, name:'', text:'她朝我挥了挥手，又继续去跑步了。看着她的背影，我心里有些复杂。'},
+    {next:'chapter3'}
+  ],
+
+  // 第三章 - 文化祭准备
+  chapter3: [
+    {bg:'bg-classroom', char:null, name:'', text:'时间飞逝，转眼就到了文化祭前夕。整个学校都沉浸在忙碌而兴奋的氛围中。'},
+    {bg:'bg-classroom', char:null, name:'', text:'我们班决定办一个咖啡厅。放学后，大家都留下来做准备。'},
+    {bg:'bg-classroom', char:null, name:'', text:'我被分配去搬材料，走出教室时，正好看到白雪一个人站在走廊里，看着窗外。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'我', text:'白雪，你怎么不进去帮忙？'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'……我不太擅长这种热闹的事情。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'', text:'她的声音有些低落。就在这时，向阳从教室里跑出来。'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'向阳', text:'白雪！你在这里啊！我们需要你帮忙写菜单！你的字那么好看！'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'我……'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'向阳', text:'拜托了！没有你我们的菜单就不好看了！'},
+    {bg:'bg-classroom', char:null, name:'', text:'向阳双手合十，恳求地看着白雪。白雪看了看她，又看了看我。'},
+    {choice:true, options:[
+      {text:'鼓励白雪：「去吧，你的字确实很好看。」', next:'ch3_encourage', affinity:{shirayuki:5, hinata:5}},
+      {text:'帮向阳一起劝：「大家都需要你。」', next:'ch3_help', affinity:{shirayuki:8}},
+      {text:'尊重白雪的意愿：「不想去也没关系。」', next:'ch3_respect', affinity:{shirayuki:3}}
+    ]}
+  ],
+
+  ch3_encourage: [
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'……你也这么觉得吗？'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'我', text:'嗯，我看过你在笔记本上写的字，很漂亮。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'……好吧。我去帮忙。'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'向阳', text:'太好了！谢谢你白雪！也谢谢你林辰！'},
+    {bg:'bg-classroom', char:null, name:'', text:'向阳高兴地拉着白雪进了教室。白雪回头看了我一眼，眼神里带着一丝感激。'},
+    {next:'chapter4'}
+  ],
+
+  ch3_help: [
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'我', text:'白雪，大家都很需要你。而且……向阳是真心希望你能加入的。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'……你们两个，真是的。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'', text:'她轻轻叹了口气，但嘴角却带着一丝笑意。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'好吧，我去。不过我只负责写菜单。'},
+    {bg:'bg-classroom', char:'hinata', pos:'right', name:'向阳', text:'没问题没问题！走走走！'},
+    {bg:'bg-classroom', char:null, name:'', text:'向阳拉着白雪进了教室。我跟在后面，看着她们的背影，心里暖暖的。'},
+    {next:'chapter4'}
+  ],
+
+  ch3_respect: [
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'我', text:'不想去也没关系，我帮你跟她说。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'……不用了。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'', text:'她沉默了一会儿，然后轻轻说：'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'白雪', text:'我……其实也想试试。只是不知道该怎么融入大家。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'我', text:'那就去吧，我会在旁边的。'},
+    {bg:'bg-classroom', char:'shirayuki', pos:'left', name:'', text:'她看了我一眼，然后点点头，跟着向阳进了教室。'},
+    {next:'chapter4'}
+  ],
+
+  // 第四章 - 文化祭
+  chapter4: [
+    {bg:'bg-sakura', char:null, name:'', text:'文化祭当天，校园里热闹非凡。各个班级都使出浑身解数，吸引着前来参观的客人。'},
+    {bg:'bg-sakura', char:null, name:'', text:'我们班的咖啡厅也大受欢迎。白雪写的菜单获得了大家的一致好评，向阳则穿着女仆装热情地招呼着客人。'},
+    {bg:'bg-sakura', char:null, name:'', text:'下午，客流渐渐少了。我走出教室透气，发现白雪正站在天台门口。'},
+    {bg:'bg-rooftop', char:'shirayuki', pos:'center', name:'我', text:'白雪，你怎么在这里？'},
+    {bg:'bg-rooftop', char:'shirayuki', pos:'center', name:'白雪', text:'……里面太吵了，出来透透气。'},
+    {bg:'bg-rooftop', char:'shirayuki', pos:'center', name:'', text:'她靠在栏杆上，风吹动着她银白色的长发。夕阳将天空染成了橘红色。'},
+    {bg:'bg-rooftop', char:'shirayuki', pos:'center', name:'白雪', text:'林辰，你知道吗？我以前从来没有参加过文化祭。'},
+    {bg:'bg-rooftop', char:'shirayuki', pos:'center', name:'我', text:'为什么？'},
+    {bg:'bg-rooftop', char:'shirayuki', pos:'center', name:'白雪', text:'因为……我总是一个人。觉得这种热闹的事情和我无关。'},
+    {bg:'bg-rooftop', char:'shirayuki', pos:'center', name:'白雪', text:'但是今天……我第一次觉得，参与其中也不错。'},
+    {bg:'bg-rooftop', char:null, name:'', text:'她转过头看着我，紫色的眼眸在夕阳下闪闪发光。'},
+    {bg:'bg-rooftop', char:'shirayuki', pos:'center', name:'白雪', text:'这都是因为……你和向阳。'},
+    {bg:'bg-rooftop', char:null, name:'', text:'就在这时，天台的门被推开了。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'right', name:'向阳', text:'找到你们了！快下来，我们班的咖啡厅被评为最佳店铺了！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'right', name:'', text:'她跑过来，一把抓住我和白雪的手。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'right', name:'向阳', text:'走走走！大家都在等你们！这是我们一起努力的成果！'},
+    {bg:'bg-rooftop', char:null, name:'', text:'我和白雪对视一眼，都笑了。然后被向阳拉着跑下了楼。'},
+    {next:'chapter5'}
+  ],
+
+  // 第五章 - 最终选择
+  chapter5: [
+    {bg:'bg-sakura', char:null, name:'', text:'文化祭结束后，时间进入了五月。樱花已经落尽，校园里一片翠绿。'},
+    {bg:'bg-classroom', char:null, name:'', text:'这天放学后，我收到了两封信。一封是白雪写的，一封是向阳写的。'},
+    {bg:'bg-classroom', char:null, name:'', text:'白雪的信上写着：「放学后，能来图书馆吗？我有话想对你说。」'},
+    {bg:'bg-classroom', char:null, name:'', text:'向阳的信上写着：「放学后，来操场找我！有重要的事！」'},
+    {bg:'bg-classroom', char:null, name:'', text:'两个人在同一时间约了我。我站在教室里，看着手中的两封信，陷入了沉思。'},
+    {bg:'bg-classroom', char:null, name:'', text:'这段时间以来，和她们在一起的点点滴滴在我脑海中浮现。'},
+    {bg:'bg-classroom', char:null, name:'', text:'安静温柔的白雪，总是在书的世界里等待着我。'},
+    {bg:'bg-classroom', char:null, name:'', text:'活泼开朗的向阳，总是用她的笑容温暖着我。'},
+    {bg:'bg-classroom', char:null, name:'', text:'我必须做出选择了。'},
+    {choice:true, options:[
+      {text:'去图书馆找白雪', next:'ending_shirayuki', affinity:{shirayuki:15}},
+      {text:'去操场找向阳', next:'ending_hinata', affinity:{hinata:15}},
+      {text:'哪里都不去，直接回家', next:'ending_alone', affinity:{}}
+    ]}
+  ],
+
+  // 白雪结局
+  ending_shirayuki: [
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'', text:'我走向图书馆。推开门，熟悉的安静气息扑面而来。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'', text:'白雪坐在我们第一次一起看书的那个角落，手里捧着一本书，但她的目光却落在窗外。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'……你来了。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'我', text:'嗯，你说有话想对我说。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'', text:'她放下书，双手放在膝盖上，紧紧攥着裙摆。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'林辰……我、我喜欢你。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'', text:'她的声音在颤抖，脸涨得通红，但眼睛却坚定地看着我。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'从你第一次和我搭话的那天起……你就一点一点地，走进了我的世界。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'我以前总是害怕和别人亲近，因为害怕离别。但是和你在一起的时候……我觉得，就算有一天会离别，现在的时光也是值得的。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'所以……请你和我交往。'},
+    {bg:'bg-library', char:null, name:'', text:'我看着她认真的表情，心中涌起一股暖流。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'我', text:'白雪，我也喜欢你。从在图书馆看到你的那一刻起。'},
+    {bg:'bg-library', char:null, name:'', text:'她的眼睛瞬间亮了起来，泪水在眼眶里打转。'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'白雪', text:'真的吗……？'},
+    {bg:'bg-library', char:'shirayuki', pos:'center', name:'我', text:'嗯，是真的。以后也请多关照了。'},
+    {bg:'bg-library', char:null, name:'', text:'她低下头，肩膀微微颤抖。我伸出手，轻轻握住了她的手。她的手很凉，但在我的掌心渐渐温暖起来。'},
+    {bg:'bg-ending-good', char:null, name:'', text:'从那以后，我们经常一起在图书馆看书。她依然安静，但脸上的笑容多了起来。'},
+    {bg:'bg-ending-good', char:null, name:'', text:'樱花落下的季节已经过去，但属于我们的故事，才刚刚开始。'},
+    {ending:true, title:'白雪结局 - 「书页间的恋曲」', text:'你选择了安静温柔的白雪。在书的世界里，你们找到了属于彼此的宁静与幸福。\n\n好感度：白雪 '}
+  ],
+
+  // 向阳结局
+  ending_hinata: [
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'', text:'我跑向操场。夕阳下，向阳正站在跑道上，双手背在身后，看到我来了，眼睛一亮。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'林辰！你来了！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'我', text:'嗯，你说有重要的事？'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'', text:'她深吸一口气，然后猛地低下头，鞠了一个九十度的躬。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'我喜欢你！请和我交往！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'', text:'她的声音很大，在空旷的操场上回荡。我愣住了。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'从你转来的第一天起，我就注意到你了！你看起来很安静，但我知道你其实是个很温柔的人！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'和你在一起的时候，我总是特别开心！跑步的时候也会想，要是你能在旁边就好了！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'所以……请你和我交往！我会让你每天都开开心心的！'},
+    {bg:'bg-rooftop', char:null, name:'', text:'她抬起头，脸涨得通红，但眼睛却亮晶晶地看着我，充满了期待。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'我', text:'向阳……我也喜欢你。从你第一天迟到冲进教室的那一刻起。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'真的吗！！太好了！！！'},
+    {bg:'bg-rooftop', char:null, name:'', text:'她高兴得跳了起来，然后冲过来一把抱住了我。她的怀抱很温暖，带着阳光的味道。'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'向阳', text:'我太开心了！林辰！从今天起你就是我男朋友了！'},
+    {bg:'bg-rooftop', char:'hinata', pos:'center', name:'我', text:'嗯，请多关照了。'},
+    {bg:'bg-ending-good', char:null, name:'', text:'从那以后，我们经常一起在操场上跑步。她依然充满活力，而我也在她的影响下，变得越来越开朗。'},
+    {bg:'bg-ending-good', char:null, name:'', text:'樱花落下的季节已经过去，但属于我们的热血青春，才刚刚开始。'},
+    {ending:true, title:'向阳结局 - 「阳光下的奔跑」', text:'你选择了活泼开朗的向阳。在运动场上，你们一起奔跑，一起追逐着属于彼此的光明与未来。\n\n好感度：向阳 '}
+  ],
+
+  // 孤独结局
+  ending_alone: [
+    {bg:'bg-night', char:null, name:'', text:'我犹豫了很久，最终还是收起了两封信，走出了教室。'},
+    {bg:'bg-night', char:null, name:'', text:'我没有去图书馆，也没有去操场。而是直接回了家。'},
+    {bg:'bg-night', char:null, name:'', text:'第二天，我看到白雪和向阳在教室里交谈。她们看到我时，表情都有些复杂。'},
+    {bg:'bg-night', char:null, name:'', text:'白雪只是看了我一眼，就低下头继续看书。但我注意到，她手里的书，一页都没有翻。'},
+    {bg:'bg-night', char:null, name:'', text:'向阳则勉强笑了笑，和我打了个招呼。但她的笑容，再也不像以前那样灿烂了。'},
+    {bg:'bg-night', char:null, name:'', text:'从那以后，我们之间似乎多了一层看不见的隔阂。'},
+    {bg:'bg-night', char:null, name:'', text:'我依然会在图书馆看到白雪，但她不再和我说话了。'},
+    {bg:'bg-night', char:null, name:'', text:'我依然会在操场看到向阳跑步，但她不再朝我挥手了。'},
+    {bg:'bg-ending-bad', char:null, name:'', text:'也许，有些机会一旦错过，就再也不会回来了。'},
+    {bg:'bg-ending-bad', char:null, name:'', text:'樱花落下的季节结束了。而我，依然是一个人。'},
+    {ending:true, title:'孤独结局 - 「错过的季节」', text:'你选择了逃避。有些心意，一旦没有回应，就会像樱花一样随风飘散。\n\n也许，下一次你会勇敢一点。'}
+  ]
+};
+
+// ============================================================
+// 游戏状态
+// ============================================================
+let gameState = {
+  currentScene: 'start',
+  currentIndex: 0,
+  affinity: {shirayuki: 0, hinata: 0},
+  isTyping: false,
+  typeTimer: null,
+  fullText: '',
+  autoMode: false,
+  skipMode: false
+};
+
+const bgEl = document.getElementById('bg');
+const charEl = document.getElementById('character');
+const charBody = document.getElementById('charBody');
+const dialogBox = document.getElementById('dialogBox');
+const speakerName = document.getElementById('speakerName');
+const dialogText = document.getElementById('dialogText');
+const continueHint = document.getElementById('continueHint');
+const choicesEl = document.getElementById('choices');
+const titleScreen = document.getElementById('titleScreen');
+const topMenu = document.getElementById('topMenu');
+const endingScreen = document.getElementById('endingScreen');
+const saveScreen = document.getElementById('saveScreen');
+const saveSlots = document.getElementById('saveSlots');
+const saveTitle = document.getElementById('saveTitle');
+const affinityToast = document.getElementById('affinityToast');
+
+let saveMode = 'save';
+
+// ============================================================
+// 樱花飘落效果
+// ============================================================
+function createPetals() {
+  const container = document.getElementById('petals');
+  container.innerHTML = '';
+  for (let i = 0; i < 15; i++) {
+    const petal = document.createElement('div');
+    petal.className = 'petal';
+    petal.style.left = Math.random() * 100 + '%';
+    petal.style.animationDuration = (5 + Math.random() * 8) + 's';
+    petal.style.animationDelay = Math.random() * 8 + 's';
+    petal.style.width = (6 + Math.random() * 8) + 'px';
+    petal.style.height = petal.style.width;
+    container.appendChild(petal);
+  }
+}
+createPetals();
+
+// ============================================================
+// 打字机效果
+// ============================================================
+function typeText(text, callback) {
+  gameState.isTyping = true;
+  gameState.fullText = text;
+  dialogText.innerHTML = '';
+  let i = 0;
+  const speed = gameState.skipMode ? 5 : 40;
+
+  function type() {
+    if (i < text.length) {
+      dialogText.innerHTML = text.substring(0, i + 1) + '<span class="cursor"></span>';
+      i++;
+      gameState.typeTimer = setTimeout(type, speed);
+    } else {
+      dialogText.innerHTML = text;
+      gameState.isTyping = false;
+      continueHint.style.display = 'block';
+      if (callback) callback();
+    }
+  }
+  type();
+}
+
+function skipTyping() {
+  if (gameState.isTyping) {
+    clearTimeout(gameState.typeTimer);
+    dialogText.innerHTML = gameState.fullText;
+    gameState.isTyping = false;
+    continueHint.style.display = 'block';
+  }
+}
+
+// ============================================================
+// 显示角色
+// ============================================================
+function showCharacter(charId, pos) {
+  if (!charId) {
+    charEl.classList.remove('show');
+    return;
+  }
+  charBody.className = 'char-body ' + charId;
+  charEl.className = '';
+  charEl.classList.add('show');
+  if (pos === 'left') charEl.classList.add('left');
+  else if (pos === 'right') charEl.classList.add('right');
+}
+
+// ============================================================
+// 显示对话
+// ============================================================
+function showDialog(node) {
+  // 背景
+  if (node.bg) {
+    bgEl.className = node.bg;
+  }
+  // 角色
+  showCharacter(node.char, node.pos);
+  // 说话人
+  speakerName.textContent = node.name || '';
+  // 文字
+  continueHint.style.display = 'none';
+  typeText(node.text);
+}
+
+// ============================================================
+// 显示选项
+// ============================================================
+function showChoices(options) {
+  choicesEl.innerHTML = '';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = opt.text;
+    btn.onclick = () => selectChoice(opt);
+    choicesEl.appendChild(btn);
+  });
+  choicesEl.style.display = 'flex';
+  dialogBox.style.display = 'none';
+}
+
+function selectChoice(opt) {
+  choicesEl.style.display = 'none';
+  dialogBox.style.display = 'flex';
+  // 好感度
+  if (opt.affinity) {
+    for (let key in opt.affinity) {
+      gameState.affinity[key] += opt.affinity[key];
+      showAffinityToast(key, opt.affinity[key]);
+    }
+  }
+  gameState.currentScene = opt.next;
+  gameState.currentIndex = 0;
+  setTimeout(advance, 300);
+}
+
+function showAffinityToast(char, value) {
+  const name = char === 'shirayuki' ? '白雪' : '向阳';
+  affinityToast.textContent = name + ' 好感度 +' + value;
+  affinityToast.classList.add('show');
+  setTimeout(() => affinityToast.classList.remove('show'), 1500);
+}
+
+// ============================================================
+// 推进剧情
+// ============================================================
+function advance() {
+  const scene = story[gameState.currentScene];
+  if (!scene) return;
+
+  if (gameState.currentIndex >= scene.length) {
+    return;
+  }
+
+  const node = scene[gameState.currentIndex];
+
+  // 跳转节点
+  if (node.next) {
+    gameState.currentScene = node.next;
+    gameState.currentIndex = 0;
+    advance();
+    return;
+  }
+
+  // 选项节点
+  if (node.choice) {
+    showChoices(node.options);
+    return;
+  }
+
+  // 结局节点
+  if (node.ending) {
+    showEnding(node);
+    return;
+  }
+
+  // 普通对话
+  showDialog(node);
+  gameState.currentIndex++;
+}
+
+// ============================================================
+// 结局
+// ============================================================
+function showEnding(node) {
+  dialogBox.style.display = 'none';
+  charEl.classList.remove('show');
+  topMenu.style.display = 'none';
+
+  let affinityText = '';
+  if (node.text.includes('好感度')) {
+    const char = gameState.currentScene === 'ending_shirayuki' ? 'shirayuki' : 'hinata';
+    const name = char === 'shirayuki' ? '白雪' : '向阳';
+    affinityText = name + ' ' + gameState.affinity[char];
+  }
+
+  endingScreen.innerHTML = `
+    <h2>${node.title}</h2>
+    <p>${node.text.replace(/\n/g, '<br>')}${affinityText}</p>
+    <button class="title-btn" onclick="backToTitle()">返回标题</button>
+  `;
+  endingScreen.style.display = 'flex';
+  bgEl.className = gameState.currentScene === 'ending_alone' ? 'bg-ending-bad' : 'bg-ending-good';
+}
+
+// ============================================================
+// 点击/触摸推进
+// ============================================================
+function handleClick() {
+  if (gameState.autoMode || gameState.skipMode) return;
+  if (choicesEl.style.display !== 'none') return;
+  if (endingScreen.style.display !== 'none') return;
+  if (titleScreen.style.display !== 'none') return;
+  if (saveScreen.style.display !== 'none') return;
+
+  if (gameState.isTyping) {
+    skipTyping();
+  } else {
+    advance();
+  }
+}
+
+document.getElementById('game').addEventListener('click', (e) => {
+  if (e.target.closest('.menu-btn') || e.target.closest('.choice-btn') ||
+      e.target.closest('.title-btn') || e.target.closest('.save-slot') ||
+      e.target.closest('.close-btn')) return;
+  handleClick();
+});
+
+// 键盘
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    handleClick();
+  }
+  if (e.code === 'Control') {
+    toggleSkip();
+  }
+});
+
+// ============================================================
+// 自动/快进
+// ============================================================
+let autoTimer = null;
+function toggleAuto() {
+  gameState.autoMode = !gameState.autoMode;
+  gameState.skipMode = false;
+  document.getElementById('autoBtn').style.background = gameState.autoMode ? 'rgba(255,215,0,0.5)' : '';
+  document.getElementById('skipBtn').style.background = '';
+  if (gameState.autoMode) {
+    runAuto();
+  } else {
+    clearTimeout(autoTimer);
+  }
+}
+
+function runAuto() {
+  if (!gameState.autoMode) return;
+  if (choicesEl.style.display !== 'none' || endingScreen.style.display !== 'none') {
+    gameState.autoMode = false;
+    document.getElementById('autoBtn').style.background = '';
+    return;
+  }
+  if (gameState.isTyping) {
+    skipTyping();
+    autoTimer = setTimeout(runAuto, 1500);
+  } else {
+    advance();
+    autoTimer = setTimeout(runAuto, 2000);
+  }
+}
+
+function toggleSkip() {
+  gameState.skipMode = !gameState.skipMode;
+  gameState.autoMode = false;
+  document.getElementById('skipBtn').style.background = gameState.skipMode ? 'rgba(255,100,100,0.5)' : '';
+  document.getElementById('autoBtn').style.background = '';
+  clearTimeout(autoTimer);
+  if (gameState.skipMode) {
+    runSkip();
+  }
+}
+
+function runSkip() {
+  if (!gameState.skipMode) return;
+  if (choicesEl.style.display !== 'none' || endingScreen.style.display !== 'none') {
+    gameState.skipMode = false;
+    document.getElementById('skipBtn').style.background = '';
+    return;
+  }
+  if (gameState.isTyping) {
+    skipTyping();
+  }
+  advance();
+  setTimeout(runSkip, 100);
+}
+
+// ============================================================
+// 存档/读档
+// ============================================================
+function showSave(mode) {
+  saveMode = mode;
+  saveTitle.textContent = mode === 'save' ? '存档' : '读档';
+  saveSlots.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const data = localStorage.getItem('galgame_save_' + i);
+    const slot = document.createElement('div');
+    slot.className = 'save-slot';
+    if (data) {
+      const parsed = JSON.parse(data);
+      const sceneNames = {start:'序章', chapter1:'第一章', chapter2:'第二章', chapter3:'第三章', chapter4:'第四章', chapter5:'第五章'};
+      const sceneName = sceneNames[parsed.currentScene] || parsed.currentScene;
+      slot.innerHTML = `<span>存档 ${i+1}</span><span class="slot-info">${sceneName} · ${parsed.saveTime}</span>`;
+    } else {
+      slot.innerHTML = `<span>存档 ${i+1}</span><span class="slot-empty">空</span>`;
+    }
+    slot.onclick = () => handleSaveSlot(i);
+    saveSlots.appendChild(slot);
+  }
+  saveScreen.style.display = 'flex';
+}
+
+function hideSave() {
+  saveScreen.style.display = 'none';
+}
+
+function handleSaveSlot(index) {
+  if (saveMode === 'save') {
+    const data = {
+      currentScene: gameState.currentScene,
+      currentIndex: gameState.currentIndex,
+      affinity: gameState.affinity,
+      saveTime: new Date().toLocaleString('zh-CN')
+    };
+    localStorage.setItem('galgame_save_' + index, JSON.stringify(data));
+    alert('存档成功！');
+  } else {
+    const data = localStorage.getItem('galgame_save_' + index);
+    if (!data) {
+      alert('这个存档是空的！');
+      return;
+    }
+    const parsed = JSON.parse(data);
+    gameState.currentScene = parsed.currentScene;
+    gameState.currentIndex = parsed.currentIndex;
+    gameState.affinity = parsed.affinity;
+    hideSave();
+    titleScreen.style.display = 'none';
+    endingScreen.style.display = 'none';
+    dialogBox.style.display = 'flex';
+    topMenu.style.display = 'flex';
+    advance();
+  }
+}
+
+// ============================================================
+// 开始新游戏
+// ============================================================
+function startNewGame() {
+  gameState = {
+    currentScene: 'start',
+    currentIndex: 0,
+    affinity: {shirayuki: 0, hinata: 0},
+    isTyping: false,
+    typeTimer: null,
+    fullText: '',
+    autoMode: false,
+    skipMode: false
+  };
+  titleScreen.style.display = 'none';
+  endingScreen.style.display = 'none';
+  dialogBox.style.display = 'flex';
+  topMenu.style.display = 'flex';
+  bgEl.className = 'bg-classroom';
+  advance();
+}
+
+function backToTitle() {
+  gameState.autoMode = false;
+  gameState.skipMode = false;
+  clearTimeout(autoTimer);
+  clearTimeout(gameState.typeTimer);
+  titleScreen.style.display = 'flex';
+  endingScreen.style.display = 'none';
+  dialogBox.style.display = 'none';
+  topMenu.style.display = 'none';
+  choicesEl.style.display = 'none';
+  charEl.classList.remove('show');
+  bgEl.className = 'bg-title';
+}
+
+function showAbout() {
+  alert('《樱花落下的季节》\n\n一款剧情推动类 Galgame\n\n操作：\n- 点击屏幕/按空格推进对话\n- 选择选项影响剧情走向\n- 好感度决定最终结局\n\n角色：\n- 白雪：安静温柔的文学少女\n- 向阳：活泼开朗的运动少女\n\n祝你游戏愉快！');
+}
+</script>
+</body>
+</html>
+<!-- （注：内容由AI生成） -->
