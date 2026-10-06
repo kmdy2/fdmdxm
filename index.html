@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>放电妹的仓库 · HTML 小游戏集合</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b7dd8'/%3E%3Ctext x='16' y='22' font-family='Helvetica,Arial,sans-serif' font-size='15' font-weight='700' fill='white' text-anchor='middle'%3E放%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Cormorant+Garamond:wght@500;600&display=swap">
+<style>
+  :root{
+    --ink:#16181d;
+    --ink-soft:#4a4f57;
+    --ink-mute:#8a8f98;
+    --line:#e6e8ec;
+    --bg:#fbfbfc;
+    --card:#ffffff;
+    --brand:#3b7dd8;
+    --brand-deep:#2b5fa8;
+    --accent:#e8743b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* ===== 顶栏 ===== */
+  header{
+    position:fixed;top:0;left:0;right:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 48px;transition:all .3s;
+  }
+  header.scrolled{
+    background:rgba(251,251,252,.88);backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);box-shadow:0 1px 0 var(--line);padding:13px 48px;
+  }
+  .logo{
+    font-weight:900;font-size:18px;letter-spacing:.02em;color:var(--ink);
+    text-decoration:none;display:flex;align-items:center;gap:10px;
+  }
+  .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--brand);display:inline-block}
+  .logo small{font-weight:400;color:var(--ink-mute);font-size:12px;letter-spacing:.1em}
+  .count-badge{
+    font-size:13px;color:var(--ink-soft);
+    border:1px solid var(--line);padding:5px 14px;border-radius:999px;background:#fff;
+  }
+  .count-badge b{color:var(--brand);font-weight:700}
+  /* ===== Hero ===== */
+  .hero{position:relative;min-height:88vh;display:flex;align-items:center;overflow:hidden}
+  .hero-bg{
+    position:absolute;inset:0;
+    background-image:url("tupian/beijin.jpg");
+    background-size:cover;background-position:center right;z-index:0;
+  }
+  .hero-mask{
+    position:absolute;inset:0;z-index:1;
+    background:linear-gradient(90deg,
+      rgba(251,251,252,.97) 0%,rgba(251,251,252,.90) 35%,
+      rgba(251,251,252,.55) 60%,rgba(251,251,252,.1) 90%);
+  }
+  .hero-inner{position:relative;z-index:2;padding:0 48px;max-width:1200px;margin:0 auto;width:100%}
+  .hero-eyebrow{
+    display:inline-flex;align-items:center;gap:10px;font-size:13px;
+    letter-spacing:.22em;color:var(--brand);text-transform:uppercase;
+    margin-bottom:26px;font-weight:500;
+  }
+  .hero-eyebrow::before{content:"";width:36px;height:1px;background:var(--brand)}
+  .hero h1{
+    font-size:clamp(48px,8vw,110px);font-weight:900;line-height:1.02;
+    letter-spacing:-.02em;margin-bottom:24px;
+  }
+  .hero h1 .accent{color:var(--brand)}
+  .hero p.lead{font-size:18px;color:var(--ink-soft);max-width:540px;margin-bottom:36px;font-weight:300}
+  .hero-cta{
+    display:inline-flex;align-items:center;gap:10px;padding:15px 30px;
+    background:var(--ink);color:#fff;text-decoration:none;font-size:14px;
+    letter-spacing:.05em;border-radius:2px;transition:all .25s;
+  }
+  .hero-cta:hover{background:var(--brand-deep);transform:translateY(-2px)}
+  /* ===== Games ===== */
+  .games{padding:90px 48px 60px;max-width:1200px;margin:0 auto}
+  .games-head{margin-bottom:44px}
+  .games-head h2{font-size:clamp(26px,3vw,40px);font-weight:700;letter-spacing:-.01em}
+  .games-head p{color:var(--ink-mute);font-size:14px;margin-top:6px}
+  .grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:28px;
+  }
+  .card{
+    background:var(--card);text-decoration:none;color:inherit;
+    display:block;transition:transform .3s ease, box-shadow .3s ease;
+    border:1px solid var(--line);
+  }
+  .card:hover{transform:translateY(-6px);box-shadow:0 18px 40px -18px rgba(20,30,60,.25)}
+  .card.feature{grid-column:span 2}
+  .cover{position:relative;overflow:hidden;background:#111}
+  .cover img{
+    width:100%;height:100%;object-fit:cover;display:block;
+    transition:transform .5s ease;
+  }
+  .card:hover .cover img{transform:scale(1.05)}
+  .card:not(.feature) .cover{aspect-ratio:16/10}
+  .card.feature .cover{aspect-ratio:16/8.5}
+  .play-badge{
+    position:absolute;top:14px;right:14px;
+    background:rgba(255,255,255,.95);color:var(--ink);
+    padding:6px 14px;font-size:12px;letter-spacing:.12em;font-weight:500;
+    display:flex;align-items:center;gap:6px;
+    opacity:0;transform:translateY(-4px);transition:all .25s;
+  }
+  .card:hover .play-badge{opacity:1;transform:translateY(0)}
+  .cover .genre{
+    position:absolute;top:14px;left:14px;
+    background:rgba(22,24,29,.75);color:#fff;
+    padding:4px 10px;font-size:11px;letter-spacing:.14em;
+  }
+  .card-body{padding:18px 20px 22px}
+  .card.feature .card-body h3{font-size:22px}
+  .card-body h3{font-size:18px;font-weight:700;line-height:1.25}
+  .card-body p{font-size:13px;color:var(--ink-mute);margin-top:6px}
+  /* ===== Footer ===== */
+  footer{
+    border-top:1px solid var(--line);margin-top:40px;
+    padding:32px 48px;text-align:center;color:var(--ink-mute);font-size:13px;
+  }
+  footer b{color:var(--brand)}
+  /* ===== Responsive ===== */
+  @media (max-width:900px){
+    header,header.scrolled{padding:14px 24px}
+    .hero-inner{padding:0 24px}
+    .games{padding:70px 24px 50px}
+    .hero-mask{
+      background:linear-gradient(180deg,
+        rgba(251,251,252,.94) 0%,rgba(251,251,252,.8) 55%,rgba(251,251,252,.35) 100%);
+    }
+    .hero-bg{background-position:center}
+    .grid{grid-template-columns:repeat(2,1fr);gap:20px}
+    .card.feature{grid-column:span 2}
+    footer{padding:28px 24px}
+  }
+  @media (max-width:560px){
+    .grid{grid-template-columns:1fr;gap:24px}
+    .card.feature{grid-column:span 1}
+    .hero{min-height:92vh}
+    .hero-inner{padding-top:50px}
+    .card-body p{font-size:14px}
+  }
+</style>
+</head>
+<body>
+<header id="header">
+  <a class="logo" href="#top"><span class="logo-dot"></span>放电妹的仓库 <small>W A R E H O U S E</small></a>
+  <div class="count-badge"><b>02</b> 款游戏</div>
+</header>
+<!-- ===== Hero ===== -->
+<section class="hero" id="top">
+  <div class="hero-bg"></div>
+  <div class="hero-mask"></div>
+  <div class="hero-inner">
+    <span class="hero-eyebrow">HTML5 · 即点即玩</span>
+    <h1>放电妹的<br><span class="accent">游戏仓库</span></h1>
+    <p class="lead">这里收录了 HTML / CSS / JS 手写的小游戏。无需下载，点开就能玩，祝你玩得开心。</p>
+    <a class="hero-cta" href="#games">
+      开始放电
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
+    </a>
+  </div>
+</section>
+<!-- ===== Games ===== -->
+<section class="games" id="games">
+  <div class="games-head">
+    <h2>全部游戏</h2>
+    <p>点击任意卡片，在新标签页中直接开始游玩</p>
+  </div>
+<div class="grid">
+ <a class="card" href="youxi/huoyingbt.html" target="_blank" rel="noopener">
+      <div class="cover">
+        <img src="tupian/huoyingbt.jpg" alt="火影忍者变态版">
+        <span class="genre">分类</span>
+        <span class="play-badge">▶ 开始游戏</span>
+      </div>
+      <div class="card-body">
+        <h3>火影忍者变态版</h3>
+        <p>4109  4256</p>
+      </div>
+    </a>
+  <a class="card" href="yuansheng/yuansheng.html" target="_blank" rel="noopener">
+      <div class="cover">
+        <img src="tupian/yuansheng.jpg" alt="方神">
+        <span class="genre">分类</span>
+        <span class="play-badge">▶ 开始游戏</span>
+      </div>
+      <div class="card-body">
+        <h3>方神</h3>
+        <p>大世界爽游</p>
+      </div>
+    </a>
+  <a class="card" href="youxi/方块世界.html" target="_blank" rel="noopener">
+      <div class="cover">
+        <img src="tupian/方块世界.jpg" alt="方块世界">
+        <span class="genre">分类</span>
+        <span class="play-badge">▶ 开始游戏</span>
+      </div>
+      <div class="card-body">
+        <h3>方块世界</h3>
+        <p>自制的类我的世界游戏</p>
+      </div>
+    </a>
+  <div class="grid">
+ <a class="card" href="2048/2048.html" target="_blank" rel="noopener">
+      <div class="cover">
+        <img src="" alt="2048">
+        <span class="genre">分类</span>
+        <span class="play-badge">▶ 开始游戏</span>
+      </div>
+      <div class="card-body">
+        <h3>2048</h3>
+        <p>2048益智小游戏</p>
+      </div>
+    </a>
+    <a class="card" href="youxi/樱花的约定.html" target="_blank" rel="noopener">
+      <div class="cover">
+        <img src="tupian/yinhua.jpg" alt="樱花的约定">
+        <span class="genre">分类</span>
+        <span class="play-badge">▶ 开始游戏</span>
+      </div>
+      <div class="card-body">
+        <h3>樱花的约定</h3>
+        <p>剧情推动游戏</p>
+      </div>
+    </a> 
+ <!-- ========== 【当前唯一游戏：罪恶都市】 ========== -->
+    <a class="card feature" href="youxi/罪恶都市.html" target="_blank" rel="noopener">
+      <div class="cover">
+        <img src="https://media.doubao.com/space/api/box/stream/download/all_by_mount_point/GfFEb0XsLolyhpxWBvrcA6h3n9c" alt="罪恶都市">
+        <span class="genre">开放世界 · 动作</span>
+        <span class="play-badge">▶ 开始游戏</span>
+      </div>
+      <div class="card-body">
+        <h3>罪恶都市 · Vice City Nights</h3>
+        <p>1986，阳光、沙滩、金钱与罪恶。霓虹都市里的自由动作冒险。</p>
+      </div>
+    </a>
+
+    <!-- =====================================================
+         ✅【新增游戏模板，以后加新游戏直接复制下面整块】
+         复制从 <a class="card" ...> 到 </a>，粘贴到上面grid里面
+         需要修改：
+         1. href="你的游戏文件名.html"  游戏文件和网页放同一个文件夹
+         2. img src="封面图片地址"
+         3. genre标签：游戏分类，例如 像素格斗 / FPS射击
+         4. h3：游戏名字
+         5. p：游戏简短介绍
+    <a class="card" href="你的游戏.html" target="_blank" rel="noopener">
+      <div class="cover">
+        <img src="封面图片链接" alt="游戏名">
+        <span class="genre">分类</span>
+        <span class="play-badge">▶ 开始游戏</span>
+      </div>
+      <div class="card-body">
+        <h3>游戏名称</h3>
+        <p>游戏简介文字</p>
+      </div>
+    </a>
+    ====================================================== -->
+
+  </div>
+</section>
+<footer>
+  © 2026 <b>放电妹的仓库</b> · 纯 HTML / CSS / JS 手写 · 欢迎游玩
+</footer>
+<script>
+  const header = document.getElementById('header');
+  window.addEventListener('scroll', () => {
+    header.classList.toggle('scrolled', window.scrollY > 40);
+  });
+</script>
+</body>
+</html>
