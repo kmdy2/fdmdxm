@@ -1,0 +1,162 @@
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+body{background:#0b0b14;color:#fff;user-select:none}
+
+/* ===== 加载 ===== */
+#loading{
+  position:fixed;inset:0;z-index:200;
+  background:#0b0b14;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:20px;
+}
+.load-text{font-size:22px;opacity:0.85;letter-spacing:2px}
+.load-bar-wrap{width:360px;height:14px;background:#222;border-radius:8px;overflow:hidden}
+.load-bar{height:100%;width:0%;background:linear-gradient(90deg,#7a22ff,#22ccff);transition:width 1.2s}
+
+#gameCanvasWrap{position:fixed;inset:0}
+canvas{display:block}
+
+/* ===== 菜单 ===== */
+.overlay{
+  position:fixed;inset:0;z-index:100;
+  background:rgba(6,6,14,0.9);
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;padding:24px;
+}
+.overlay.show{display:flex}
+.menu-inner{text-align:center;max-width:560px}
+.menu-inner h1{font-size:clamp(36px,9vw,64px);margin-bottom:16px;background:linear-gradient(90deg,#c084ff,#44ddff);-webkit-background-clip:text;color:transparent;letter-spacing:4px}
+.menu-inner h2{font-size:32px;margin-bottom:28px;letter-spacing:2px}
+.story{opacity:0.85;line-height:1.9;margin-bottom:32px;font-size:17px}
+.menu-inner button{
+  padding:16px 52px;margin:10px;font-size:18px;border:none;border-radius:10px;
+  background:linear-gradient(90deg,#7a22ff,#22ccff);color:#fff;cursor:pointer;
+  letter-spacing:4px;font-weight:600;
+}
+.menu-inner button:hover{filter:brightness(1.15)}
+.help-info{margin-top:28px;font-size:14px;opacity:0.65;line-height:2}
+
+/* ===== HUD ===== */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:50}
+
+/* 状态栏 - 左下角 */
+.status-row{
+  position:absolute;left:20px;bottom:24px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.bar-wrap{min-width:220px}
+.bar-wrap .label{font-size:14px;margin-bottom:5px;opacity:0.9;font-weight:600;letter-spacing:1px;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.bar{width:100%;height:16px;background:rgba(0,0,0,0.6);border-radius:6px;overflow:hidden;border:1.5px solid rgba(255,255,255,0.2);box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.bar-fill{height:100%;transition:width 0.22s}
+.bar.hp .bar-fill{background:linear-gradient(90deg,#ff2b52,#ff607c)}
+.bar.stamina .bar-fill{background:linear-gradient(90deg,#32e270,#82ffaa)}
+.bar.energy .bar-fill{background:linear-gradient(90deg,#9944ff,#dd88ff)}
+
+/* 技能栏 - 状态栏右侧 */
+.skill-bar{
+  position:absolute;left:260px;bottom:24px;
+  display:flex;gap:14px;
+}
+.skill{
+  width:76px;height:76px;border-radius:12px;
+  background:rgba(0,0,0,0.55);border:2px solid rgba(180,120,255,0.5);
+  position:relative;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 10px rgba(0,0,0,.4);
+}
+.skill .key{
+  position:absolute;top:5px;left:8px;font-size:13px;opacity:0.85;
+  font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.8)
+}
+.skill-icon{font-size:34px}
+.skill .cd{
+  position:absolute;inset:0;background:rgba(0,0,0,0.75);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  border-radius:12px;font-weight:700
+}
+
+/* 任务面板 - 右上角 */
+.quest-panel{
+  position:absolute;top:20px;right:20px;
+  background:rgba(0,0,0,0.58);border-radius:12px;padding:14px 18px;
+  border:1.5px solid rgba(120,180,255,0.35);max-width:380px;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);backdrop-filter:blur(4px);
+}
+.q-title{font-size:14px;color:#66ccff;margin-bottom:6px;font-weight:700;letter-spacing:2px}
+#questText{font-size:16px;line-height:1.6;font-weight:500}
+
+/* 小地图 - 左上角 */
+.mini-map{
+  position:absolute;top:20px;left:20px;width:170px;height:170px;
+  border-radius:14px;overflow:hidden;border:2.5px solid rgba(120,180,255,0.5);
+  background:rgba(0,0,0,0.5);box-shadow:0 4px 16px rgba(0,0,0,.5)
+}
+#minimap{width:100%;height:100%}
+
+/* 交互提示 - 底部中间 */
+.tip-box{
+  position:absolute;left:50%;transform:translateX(-50%);bottom:130px;
+  background:rgba(0,0,0,0.72);padding:10px 28px;border-radius:99px;
+  font-size:16px;opacity:0;transition:opacity 0.3s;
+  border:1.5px solid rgba(255,215,0,0.4);font-weight:600;letter-spacing:1px;
+  box-shadow:0 2px 12px rgba(0,0,0,.5);
+}
+.tip-box.show{opacity:1}
+
+/* 伤害数字 */
+#damageFloatWrap{position:absolute;inset:0;pointer-events:none}
+.dmg-float{
+  position:absolute;font-size:28px;font-weight:bold;color:#ffdd44;
+  text-shadow:0 0 8px #000,0 2px 4px rgba(0,0,0,.8);
+  animation:dmgFloat 1s ease-out forwards;
+}
+@keyframes dmgFloat{
+  0%{opacity:1;transform:translateY(0) scale(1)}
+  100%{opacity:0;transform:translateY(-60px) scale(1.3)}
+}
+
+/* ===== 手机端 ===== */
+#mobileUi{display:none;pointer-events:none;z-index:40}
+@media(max-width:900px){
+  #mobileUi{display:block;position:fixed;inset:0}
+  /* 手机端状态栏缩小避免挡视线 */
+  .status-row{left:14px;bottom:150px;gap:7px}
+  .bar-wrap{min-width:160px}
+  .bar{height:13px}
+  .bar-wrap .label{font-size:12px}
+  .skill-bar{left:14px;bottom:96px;gap:10px}
+  .skill{width:58px;height:58px;border-radius:10px}
+  .skill-icon{font-size:26px}
+  .skill .key{font-size:11px}
+  .skill .cd{font-size:16px}
+  .quest-panel{top:12px;right:12px;padding:10px 14px;max-width:240px}
+  .q-title{font-size:12px}
+  #questText{font-size:13px;line-height:1.5}
+  .mini-map{top:12px;left:12px;width:110px;height:110px;border-radius:10px}
+  .tip-box{bottom:200px;font-size:14px;padding:8px 20px}
+  .dmg-float{font-size:22px}
+}
+
+/* 虚拟摇杆 */
+#joystick{
+  position:fixed;left:24px;bottom:28px;width:140px;height:140px;
+  border-radius:50%;background:rgba(255,255,255,0.14);
+  border:2.5px solid rgba(255,255,255,0.28);touch-action:none
+}
+#joyKnob{
+  position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;
+  border-radius:50%;background:rgba(255,255,255,0.4);
+  border:2.5px solid rgba(255,255,255,0.5)
+}
+
+/* 手机按钮组 */
+.mobile-btns{
+  position:fixed;right:20px;bottom:28px;
+  display:grid;grid-template-columns:repeat(3,64px);gap:12px
+}
+.m-btn{
+  width:64px;height:64px;border-radius:50%;
+  background:rgba(255,255,255,0.2);border:2.5px solid rgba(255,255,255,0.35);
+  color:#fff;font-size:15px;touch-action:none;font-weight:600;
+  display:flex;align-items:center;justify-content:center;
+}
+.m-btn:active{background:rgba(255,255,255,0.35);transform:scale(0.92)}
+/* （注：内容由AI生成） */

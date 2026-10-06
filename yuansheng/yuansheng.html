@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>星辉纪行｜开放世界RPG</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="loading">
+  <div class="load-text">世界正在生成…</div>
+  <div class="load-bar-wrap"><div class="load-bar"></div></div>
+</div>
+
+<div id="gameCanvasWrap">
+  <canvas id="gameCanvas"></canvas>
+</div>
+
+<div id="hud">
+  <div class="status-row">
+    <div class="bar-wrap">
+      <div class="label">生命</div>
+      <div class="bar hp"><div class="bar-fill" id="hpFill"></div></div>
+    </div>
+    <div class="bar-wrap">
+      <div class="label">体力</div>
+      <div class="bar stamina"><div class="bar-fill" id="staminaFill"></div></div>
+    </div>
+    <div class="bar-wrap">
+      <div class="label">元素能量</div>
+      <div class="bar energy"><div class="bar-fill" id="energyFill"></div></div>
+    </div>
+  </div>
+
+  <div class="skill-bar">
+    <div class="skill">
+      <div class="key">E</div>
+      <div class="skill-icon">🔥</div>
+      <div class="cd" id="eCd"></div>
+    </div>
+    <div class="skill">
+      <div class="key">Q</div>
+      <div class="skill-icon">💥</div>
+      <div class="cd" id="qCd"></div>
+    </div>
+  </div>
+
+  <div class="quest-panel">
+    <div class="q-title">当前任务</div>
+    <div id="questText">-</div>
+  </div>
+
+  <div class="mini-map">
+    <canvas id="minimap"></canvas>
+  </div>
+
+  <div id="tipBox" class="tip-box"></div>
+  <div id="damageFloatWrap"></div>
+</div>
+
+<div id="startMenu" class="overlay">
+  <div class="menu-inner">
+    <h1>星辉纪行</h1>
+    <p class="story">你在星辉大陆苏醒。深渊裂痕正在扩张，魔物侵蚀大地。<br>向导精灵小星将陪伴你，踏上封印远古魔神的旅途。</p>
+    <button id="startBtn">开始冒险</button>
+    <div class="help-info">
+W前进｜S后退｜A左｜D右<br>
+空格跳跃｜Shift冲刺｜点击画面锁定鼠标后移动即可转视角<br>
+左键普攻｜E元素战技｜Q元素爆发｜F交互｜ESC暂停
+    </div>
+  </div>
+</div>
+
+<div id="pauseMenu" class="overlay">
+  <div class="menu-inner">
+    <h2>游戏暂停</h2>
+    <button id="resumeBtn">继续游戏</button>
+    <button id="restartBtn">重新开始</button>
+  </div>
+</div>
+
+<div id="mobileUi">
+  <div id="joystick">
+    <div id="joyKnob"></div>
+  </div>
+  <div class="mobile-btns">
+    <button class="m-btn" id="mJump">跳</button>
+    <button class="m-btn" id="mSprint">冲刺</button>
+    <button class="m-btn" id="mAtk">攻击</button>
+    <button class="m-btn" id="mSkillE">E</button>
+    <button class="m-btn" id="mSkillQ">Q</button>
+    <button class="m-btn" id="mInteract">F</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
