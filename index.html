@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>放电妹的仓库 · HTML 小游戏集合</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b7dd8'/%3E%3Ctext x='16' y='22' font-family='Helvetica,Arial,sans-serif' font-size='15' font-weight='700' fill='white' text-anchor='middle'%3E放%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Cormorant+Garamond:wght@500;600&display=swap">
+<style>
+  :root{
+    --ink:#16181d;
+    --ink-soft:#4a4f57;
+    --ink-mute:#8a8f98;
+    --line:#e6e8ec;
+    --bg:#fbfbfc;
+    --card:#ffffff;
+    --brand:#3b7dd8;
+    --brand-deep:#2b5fa8;
+    --accent:#e8743b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* ===== 顶栏 ===== */
+  header{
+    position:fixed;top:0;left:0;right:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 48px;transition:all .3s;
+  }
+  header.scrolled{
+    background:rgba(251,251,252,.88);backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);box-shadow:0 1px 0 var(--line);padding:13px 48px;
+  }
+  .logo{
+    font-weight:900;font-size:18px;letter-spacing:.02em;color:var(--ink);
+    text-decoration:none;display:flex;align-items:center;gap:10px;
+  }
+  .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--brand);display:inline-block}
+  .logo small{font-weight:400;color:var(--ink-mute);font-size:12px;letter-spacing:.1em}
+  .count-badge{
+    font-size:13px;color:var(--ink-soft);
+    border:1px solid var(--line);padding:5px 14px;border-radius:999px;background:#fff;
+  }
+  .count-badge b{color:var(--brand);font-weight:700}
+  /* ===== Hero ===== */
+  .hero{position:relative;min-height:88vh;display:flex;align-items:center;overflow:hidden}
+  .hero-bg{
+    position:absolute;inset:0;
+    background-image:url("tupian/beijin.jpg");
+    background-size:cover;background-position:center right;z-index:0;
+  }
+  .hero-mask{
+    position:absolute;inset:0;z-index:1;
+    background:linear-gradient(90deg,
+      rgba(251,251,252,.97) 0%,rgba(251,251,252,.90) 35%,
+      rgba(251,251,252,.55) 60%,rgba(251,251,252,.1) 90%);
+  }
+  .hero-inner{position:relative;z-index:2;padding:0 48px;max-width:1200px;margin:0 auto;width:100%}
+  .hero-eyebrow{
+    display:inline-flex;align-items:center;gap:10px;font-size:13px;
+    letter-spacing:.22em;color:var(--brand);text-transform:uppercase;
+    margin-bottom:26px;font-weight:500;
+  }
+  .hero-eyebrow::before{content:"";width:36px;height:1px;background:var(--brand)}
+  .hero h1{
+    font-size:clamp(48px,8vw,110px);font-weight:900;line-height:1.02;
+    letter-spacing:-.02em;margin-bottom:24px;
+  }
+  .hero h1 .accent{color:var(--brand)}
+  .hero p.lead{font-size:18px;color:var(--ink-soft);max-width:540px;margin-bottom:36px;font-weight:300}
+  .hero-cta{
+    display:inline-flex;align-items:center;gap:10px;padding:15px 30px;
+    background:var(--ink);color:#fff;text-decoration:none;font-size:14px;
+    letter-spacing:.05em;border-radius:2px;transition:all .25s;cursor:pointer;border:none;
+  }
+  .hero-cta:hover{background:var(--brand-deep);transform:translateY(-2px)}
+  /* ===== 分类选择区 ===== */
+  .categories{padding:90px 48px 60px;max-width:1200px;margin:0 auto}
+  .cat-head{margin-bottom:44px}
+  .cat-head h2{font-size:clamp(26px,3vw,40px);font-weight:700;letter-spacing:-.01em}
+  .cat-head p{color:var(--ink-mute);font-size:14px;margin-top:6px}
+  .cat-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:28px;
+  }
+  .cat-card{
+    background:var(--card);text-decoration:none;color:inherit;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:48px 24px;transition:transform .3s ease, box-shadow .3s ease;
+    border:1px solid var(--line);position:relative;overflow:hidden;
+    min-height:220px;
+  }
+  .cat-card:hover{transform:translateY(-6px);box-shadow:0 18px 40px -18px rgba(20,30,60,.25)}
+  .cat-icon{
+    width:64px;height:64px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+    margin-bottom:20px;transition:transform .3s ease;
+  }
+  .cat-card:hover .cat-icon{transform:scale(1.1)}
+  .cat-icon svg{width:32px;height:32px}
+  .cat-card h3{font-size:20px;font-weight:700;margin-bottom:6px}
+  .cat-card .cat-count{font-size:13px;color:var(--ink-mute)}
+  .cat-card .cat-arrow{
+    position:absolute;bottom:16px;right:18px;opacity:0;transform:translateX(-6px);
+    transition:all .25s;color:var(--ink-mute);
+  }
+  .cat-card:hover .cat-arrow{opacity:1;transform:translateX(0)}
+  /* 各分类配色 */
+  .cat-fighting .cat-icon{background:rgba(220,72,72,.12);color:#dc4848}
+  .cat-casual .cat-icon{background:rgba(64,160,96,.12);color:#40a060}
+  .cat-shooter .cat-icon{background:rgba(59,125,216,.12);color:#3b7dd8}
+  .cat-racing .cat-icon{background:rgba(147,88,208,.12);color:#9358d0}
+  .cat-story .cat-icon{background:rgba(232,116,59,.12);color:#e8743b}
+  .cat-placeholder{
+    background:repeating-linear-gradient(135deg,#fafbfc,#fafbfc 10px,#f4f5f7 10px,#f4f5f7 20px);
+  }
+  /* ===== Footer ===== */
+  footer{
+    border-top:1px solid var(--line);margin-top:40px;
+    padding:32px 48px;text-align:center;color:var(--ink-mute);font-size:13px;
+  }
+  footer b{color:var(--brand)}
+  /* ===== Responsive ===== */
+  @media (max-width:900px){
+    header,header.scrolled{padding:14px 24px}
+    .hero-inner{padding:0 24px}
+    .categories{padding:70px 24px 50px}
+    .hero-mask{
+      background:linear-gradient(180deg,
+        rgba(251,251,252,.94) 0%,rgba(251,251,252,.8) 55%,rgba(251,251,252,.35) 100%);
+    }
+    .hero-bg{background-position:center}
+    .cat-grid{grid-template-columns:repeat(2,1fr);gap:20px}
+    footer{padding:28px 24px}
+  }
+  @media (max-width:560px){
+    .cat-grid{grid-template-columns:1fr;gap:24px}
+    .hero{min-height:92vh}
+    .hero-inner{padding-top:50px}
+  }
+</style>
+</head>
+<body>
+<header id="header">
+  <a class="logo" href="#top"><span class="logo-dot"></span>放电妹的据点 <small>W A R E H O U S E</small></a>
+  <div class="count-badge"><b>06</b> 款游戏</div>
+</header>
+<!-- ===== Hero ===== -->
+<section class="hero" id="top">
+  <div class="hero-bg"></div>
+  <div class="hero-mask"></div>
+  <div class="hero-inner">
+    <span class="hero-eyebrow">HTML5 · 即点即玩</span>
+    <h1>放电妹的<br><span class="accent">游戏仓库</span></h1>
+    <p class="lead">我是一名高中生，研究了些猎奇游戏，欢迎大家游玩，阿里嘎多~ </p>
+    <a class="hero-cta" href="#categories">
+      开始放电
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
+    </a>
+  </div>
+</section>
+<!-- ===== 游戏分类选择 ===== -->
+<section class="categories" id="categories">
+  <div class="cat-head">
+    <h2>选择游戏类型</h2>
+    <p>点击分类进入对应游戏列表</p>
+  </div>
+  <div class="cat-grid">
+    <!-- 格斗游戏 -->
+    <a class="cat-card cat-fighting" href="fighting.html">
+      <div class="cat-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/>
+        </svg>
+      </div>
+      <h3>格斗游戏</h3>
+      <span class="cat-count">2 款游戏</span>
+      <span class="cat-arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </span>
+    </a>
+    <!-- 休闲游戏 -->
+    <a class="cat-card cat-casual" href="casual.html">
+      <div class="cat-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4"/><circle cx="15" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/>
+        </svg>
+      </div>
+      <h3>休闲游戏</h3>
+      <span class="cat-count">3 款游戏</span>
+      <span class="cat-arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </span>
+    </a>
+    <!-- 射击游戏 -->
+    <a class="cat-card cat-shooter cat-placeholder" href="shooter.html">
+      <div class="cat-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+        </svg>
+      </div>
+      <h3>射击游戏</h3>
+      <span class="cat-count">敬请期待</span>
+      <span class="cat-arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </span>
+    </a>
+    <!-- 赛车游戏 -->
+    <a class="cat-card cat-racing cat-placeholder" href="racing.html">
+      <div class="cat-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 17h14M6.5 17l1.5-6h8l1.5 6"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/><path d="M9 11V8h6v3"/>
+        </svg>
+      </div>
+      <h3>赛车游戏</h3>
+      <span class="cat-count">敬请期待</span>
+      <span class="cat-arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </span>
+    </a>
+    <!-- 剧情推动游戏 -->
+    <a class="cat-card cat-story" href="story.html">
+      <div class="cat-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+      </div>
+      <h3>剧情推动游戏</h3>
+      <span class="cat-count">1 款游戏</span>
+      <span class="cat-arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </span>
+    </a>
+  </div>
+</section>
+<footer>
+  © 2026 <b>放电妹的仓库</b> · 纯 HTML / CSS / JS 手写 · 欢迎游玩
+</footer>
+<script>
+  const header = document.getElementById('header');
+  window.addEventListener('scroll', () => {
+    header.classList.toggle('scrolled', window.scrollY > 40);
+  });
+</script>
+</body>
+</html>
